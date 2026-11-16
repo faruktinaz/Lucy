@@ -1,0 +1,15 @@
+# Rate limits per route group. The server re-reads this file when it changes.
+# A group without an entry is not limited.
+
+[limits.writes]
+limit = 60
+windowSeconds = 60
+
+[limits.exports]
+limit = 5
+windowSeconds = 300
+
+# Generous limit for the CLI, which batches requests during `orbitctl import`.
+[limits.cli]
+limit = 600
+windowSeconds = 60

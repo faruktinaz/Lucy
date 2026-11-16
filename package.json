@@ -1,0 +1,44 @@
+{
+  "name": "lucy-workspace",
+  "version": "0.1.0",
+  "description": "Terminal-first developer workspace: explorer, viewer, source control, search and Claude Code in one TUI.",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "lucy": "./bin/lucy"
+  },
+  "engines": {
+    "bun": ">=1.3.5"
+  },
+  "scripts": {
+    "dev": "bun run bin/lucy",
+    "demo": "bun run bin/lucy --demo",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "check": "bun run typecheck && bun run lint && bun test",
+    "screenshots": "bun scripts/screenshots.ts"
+  },
+  "dependencies": {
+    "@opentui/core": "0.9.1",
+    "@opentui/react": "0.9.1",
+    "@tree-sitter-grammars/tree-sitter-toml": "0.7.0",
+    "@tree-sitter-grammars/tree-sitter-yaml": "0.7.1",
+    "react": "19",
+    "smol-toml": "1.9.1",
+    "tree-sitter-bash": "0.25.1",
+    "tree-sitter-css": "0.25.0",
+    "tree-sitter-go": "0.25.0",
+    "tree-sitter-html": "0.23.2",
+    "tree-sitter-python": "0.25.0",
+    "tree-sitter-rust": "0.24.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.8",
+    "@types/bun": "^1.4.4",
+    "@types/react": "19",
+    "typescript": "^7.0.2"
+  }
+}

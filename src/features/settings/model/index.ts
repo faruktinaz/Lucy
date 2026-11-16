@@ -1,0 +1,75 @@
+export { type CommandLineParse, formatCommandLine, parseCommandLine } from "./command-line";
+export {
+  type CapabilityRow,
+  type FeatureModule,
+  INTEGRATION_TOOLS,
+  IntegrationsModel,
+  type IntegrationsModelOptions,
+  type IntegrationsState,
+  parseVersion,
+  type TerminalCapabilities,
+  type ToolRow,
+  type ToolRunner,
+  type ToolSpec,
+  type ToolStatus,
+  type VersionStatus,
+} from "./integrations-model";
+export {
+  type BindingView,
+  type CaptureConflict,
+  type CaptureState,
+  type CategoryRow,
+  type CommandRow,
+  type KeybindingsMessage,
+  type KeybindingsRow,
+  type KeybindingsState,
+  KeybindingsViewModel,
+  type KeybindingsViewModelOptions,
+  syncUserBindings,
+} from "./keybindings-view-model";
+export {
+  ONBOARDING_MARKER_FILE,
+  type OnboardingMarker,
+  onboardingMarkerPath,
+  readOnboardingMarker,
+  shouldRunOnboarding,
+  writeOnboardingMarker,
+} from "./onboarding-marker";
+export {
+  type AiDetection,
+  type Async,
+  type EditorCandidate,
+  type EditorChoice,
+  ONBOARDING_STEPS,
+  type OnboardingChoices,
+  type OnboardingDeps,
+  OnboardingModel,
+  type OnboardingState,
+  type OnboardingStep,
+  type SummaryEntry,
+  type ThemeOption,
+} from "./onboarding-model";
+export {
+  type ControlKind,
+  controlFor,
+  type DraftKind,
+  type DraftResult,
+  formatSettingValue,
+  initialDraft,
+  parseDraft,
+  type SettingControl,
+} from "./setting-controls";
+export {
+  type ConfigProblemView,
+  type SettingHeaderRow,
+  type SettingItemRow,
+  type SettingsEdit,
+  type SettingsFileInfo,
+  type SettingsIntent,
+  type SettingsMessage,
+  type SettingsRow,
+  type SettingsState,
+  SettingsViewModel,
+  type SettingsViewModelOptions,
+} from "./settings-view-model";
+export { foldText, matchesTerms, queryTerms } from "./text-match";

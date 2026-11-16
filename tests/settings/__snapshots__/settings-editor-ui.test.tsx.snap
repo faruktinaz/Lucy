@@ -1,0 +1,72 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Settings editor text snapshots at 120x35 and 90x28: settings-120x35 1`] = `
+" workspace-XXXXXX                      ⌕ Search files and commands           Ctrl+P                            ◧  ⬓  ◨  
+▎ ⧉  EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯    ❖ Settings ✕                                                                        
+                                    Preferences ▸ Settings                                                              
+  ⌕                                                                                                                     
+     This folder is empty            ⌕ Search settings by name, description or key                         44 settings  
+  ⑂                                                                                                                     
+     Create a file or a folder to   APPEARANCE  6                                                                       
+  ✦  get started.                   Color theme  ui.theme                               ◂ Catppuccin Mocha ▸            
+                                    The color theme for the whole workspace.                                            
+  ⊞  New File  Ctrl+K Shift+F                                                                                           
+     New Folder  Ctrl+K Shift+D     Accent color  ui.accent                                ◂ Default ▸                  
+                                    Color for focus, selection and active indicators.                                   
+                                    Named accents use the theme's own palette; a …                                      
+                                                                                                                        
+                                    Density  ui.density                                 ◂ Comfortable ▸                 
+                                    Spacing between rows and around panels.                                             
+                                                                                                                        
+                                    Icons  ui.icons                                     ◂ Automatic ▸                   
+                                    Icon set. Nerd Font glyphs need a patched font;                                     
+                                    automatic uses Unicode symbols, or ASCII on the …                                   
+                                                                                                                        
+                                    Animations  ui.animations                            On                             
+                                    Subtle transitions such as panel slides. Turn off                                   
+                                    for remote or slow terminals.                                                       
+                                                                                                                        
+                                    Color mode  ui.color_mode                           ◂ Automatic ▸                   
+                                    How many colors the terminal can show. Automatic                                    
+                                    reads COLORTERM, TERM and NO_COLOR; an explicit …                                   
+                                    Takes effect after restarting Lucy.                                                 
+                                                                                                                        
+                                    Enter choose   ←→ cycle   / search                                                  
+                                    Saved in <config path>
+  ❖                                 Lucy writes only its own files and never edits other tools' configuration, such as  
+                                    your shell, Git, terminal or tmux settings.                                         
+                                                                                                       Catppuccin Mocha 
+"
+`;
+
+exports[`Settings editor text snapshots at 120x35 and 90x28: settings-90x28 1`] = `
+" workspace-XXXXXX       ⌕ Search files and commands           Ctrl+P             ◧  ⬓  ◨  
+▎ ⧉  EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯    ❖ Settings ✕                                          
+                                    Preferences ▸ Settings                                
+  ⌕                                                                                       
+     This folder is empty            ⌕ Search settings by name, description  44 settings  
+  ⑂                                                                                       
+     Create a file or a folder to   APPEARANCE  6                                         
+  ✦  get started.                   Color theme  ui.theme                                 
+                                    The color theme for the whole workspace.              
+  ⊞  New File  Ctrl+K Shift+F       ◂ Catppuccin Mocha ▸                                  
+     New Folder  Ctrl+K Shift+D                                                           
+                                    Accent color  ui.accent                               
+                                    Color for focus, selection and active indicators.     
+                                    Named accents use the theme's own palette; a …        
+                                       ◂ Default ▸                                        
+                                                                                          
+                                    Density  ui.density                                   
+                                    Spacing between rows and around panels.               
+                                    ◂ Comfortable ▸                                       
+                                                                                          
+                                    Icons  ui.icons                                       
+                                    Icon set. Nerd Font glyphs need a patched font;       
+                                                                                          
+                                    Enter choose   ←→ cycle   / search                    
+                                    Saved in <config path>
+  ❖                                 Lucy writes only its own files and never edits other  
+                                    tools' configuration, such as your shell, Git, …      
+                                                                         Catppuccin Mocha 
+"
+`;

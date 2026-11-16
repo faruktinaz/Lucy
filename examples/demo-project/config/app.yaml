@@ -1,0 +1,20 @@
+# Server defaults. Environment variables in .env take precedence.
+server:
+  host: 127.0.0.1
+  port: 4180
+  # Requests slower than this are logged with their route and duration.
+  slow_request_ms: 250
+
+logging:
+  level: info
+  format: pretty
+
+features:
+  # Attach notes to tasks from the task list.
+  task_notes: true
+  # Experimental: command palette in the web client (ctrl+k).
+  command_palette: false
+
+ui:
+  default_view: open
+  page_size: 50

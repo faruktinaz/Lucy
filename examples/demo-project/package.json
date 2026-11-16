@@ -1,0 +1,24 @@
+{
+  "name": "orbit",
+  "version": "0.3.0",
+  "description": "A small, self-hosted service for tasks and the notes that go with them.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server/index.ts",
+    "start": "bun src/server/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "analyze": "python3 analysis/task_throughput.py data/sample-tasks.json"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "1.2.14",
+    "@types/react": "19.1.6",
+    "@types/react-dom": "19.1.5",
+    "typescript": "5.8.3"
+  }
+}

@@ -1,0 +1,4 @@
+# The throughput report only uses the standard library. These are for the
+# optional notebook in analysis/notebooks/, which is not checked in.
+pandas==2.2.3
+matplotlib==3.9.2

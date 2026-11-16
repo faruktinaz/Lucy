@@ -1,0 +1,100 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`shell text snapshots 120x35 1`] = `
+" atlas                                 ⌕ Search files and commands           Ctrl+P                            ◧  ⬓  ◨  
+▎ ⧉  EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯                                                                                        
+     ▸ ◫ src                    ◉                                                                                       
+  ⌕    ◦ package.json                                                                                                   
+       ◦ README.md              M                                                                                       
+  ⑂                                                                                                                     
+  2                                                                                                                     
+  ✦                                                                                                                     
+                                                                                                                        
+  ⊞                                                                                                                     
+                                                        lucy                                                            
+                                                        atlas                                                           
+                                                        <workspace>                      
+                                                                                                                        
+                                                                                                                        
+                                                        Open a file                         Ctrl+P                      
+                                                        Show all commands                       F1                      
+                                                        Search in files                   Ctrl+K F                      
+                                                        Source control                    Ctrl+K G                      
+                                                        Ask Claude                          Ctrl+L                      
+                                                        Open a terminal                   Ctrl+K T                      
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+  ❖                                                                                                                     
+                                                                                                                        
+ ⎇ main  ⇡2  ◉ 2                                                                                       Catppuccin Mocha 
+"
+`;
+
+exports[`shell text snapshots 90x28 1`] = `
+" atlas                  ⌕ Search files and commands           Ctrl+P             ◧  ⬓  ◨  
+▎ ⧉  EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯                                                          
+     ▸ ◫ src                    ◉                                                         
+  ⌕    ◦ package.json                                                                     
+       ◦ README.md              M                                                         
+  ⑂                                                                                       
+  2                                                                                       
+  ✦                                      lucy                                             
+                                         atlas                                            
+  ⊞                                      <workspace>       
+                                                                                          
+                                                                                          
+                                         Open a file                         Ctrl+P       
+                                         Show all commands                       F1       
+                                         Search in files                   Ctrl+K F       
+                                         Source control                    Ctrl+K G       
+                                         Ask Claude                          Ctrl+L       
+                                         Open a terminal                   Ctrl+K T       
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+  ❖                                                                                       
+                                                                                          
+ ⎇ main  ⇡2  ◉ 2                                                         Catppuccin Mocha 
+"
+`;
+
+exports[`shell text snapshots 70x24 1`] = `
+" atlas                                                    ⌕  ◧  ⬓  ◨  
+  ⧉                                                                   
+                                                                      
+  ⌕                                                                   
+                                                                      
+  ⑂                                                                   
+  2             lucy                                                  
+  ✦             atlas                                                 
+                <workspace>            
+  ⊞                                                                   
+                                                                      
+                Open a file                         Ctrl+P            
+                Show all commands                       F1            
+                Search in files                   Ctrl+K F            
+                Source control                    Ctrl+K G            
+                Ask Claude                          Ctrl+L            
+                Open a terminal                   Ctrl+K T            
+                                                                      
+                                                                      
+                                                                      
+                                                                      
+  ❖                                                                   
+                                                                      
+ ⎇ main  ⇡2  ◉ 2                                     Catppuccin Mocha 
+"
+`;

@@ -1,0 +1,70 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`tree rendering text snapshot 120x35 1`] = `
+" EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯
+ ▸ ◫ docs
+ ▾ ◫ src
+   ▾ ◫ components
+   │   ◦ Button.tsx
+     ◦ çalışma-notları.md
+     ◦ main.ts
+   ◦ .env
+   ◦ a-very-long-file-name-t…
+   ◦ README.md
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+`;
+
+exports[`tree rendering text snapshot 90x28 1`] = `
+" EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯
+ ▸ ◫ docs
+ ▾ ◫ src
+   ▾ ◫ components
+   │   ◦ Button.tsx
+     ◦ çalışma-notları.md
+     ◦ main.ts
+   ◦ .env
+   ◦ a-very-long-file-name-t…
+   ◦ README.md
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+`;

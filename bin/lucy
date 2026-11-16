@@ -1,0 +1,18 @@
+#!/usr/bin/env bun
+// Lucy Workspace launcher: `lucy [path] [options]`. The app lives in src/main.ts.
+//
+// The app is loaded with a dynamic import inside `importWithoutReactDevTools`: evaluating
+// `@opentui/react` with `DEV=true` in the environment would connect to React DevTools on
+// localhost, and Lucy makes no network connections of its own. Keep this file free of static
+// imports that reach the React layer.
+import { importWithoutReactDevTools } from "../src/core/react-devtools.ts";
+
+try {
+  const { run } = await importWithoutReactDevTools(() => import("../src/main.ts"));
+  const code = await run(process.argv.slice(2));
+  // -1 means the app is running; it exits through its own shutdown path.
+  if (code >= 0) process.exit(code);
+} catch (error) {
+  process.stderr.write(`lucy: ${error instanceof Error ? error.message : String(error)}\n`);
+  process.exit(1);
+}

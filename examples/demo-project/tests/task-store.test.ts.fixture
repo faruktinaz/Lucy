@@ -1,0 +1,55 @@
+import { describe, expect, test } from "bun:test";
+import { TaskStore } from "../src/server/store/task-store";
+
+function fixedClock(start = "2026-03-01T09:00:00.000Z") {
+  let time = new Date(start).getTime();
+  return () => {
+    time += 60_000;
+    return new Date(time);
+  };
+}
+
+describe("TaskStore", () => {
+  test("creates tasks with defaults and sequential ids", () => {
+    const store = new TaskStore(fixedClock());
+    const first = store.create({ title: "Write the changelog" });
+    const second = store.create({ title: "Tag the release", priority: "high" });
+
+    expect(first.id).toBe("tsk_0001");
+    expect(first.status).toBe("todo");
+    expect(first.priority).toBe("normal");
+    expect(second.id).toBe("tsk_0002");
+    expect(second.priority).toBe("high");
+  });
+
+  test("lists newest first and paginates with a cursor", () => {
+    const store = new TaskStore(fixedClock());
+    for (const title of ["One", "Two", "Three"]) store.create({ title });
+
+    const firstPage = store.list({}, undefined, 2);
+    expect(firstPage.items.map((task) => task.title)).toEqual(["Three", "Two"]);
+    expect(firstPage.nextCursor).not.toBeNull();
+
+    const secondPage = store.list({}, firstPage.nextCursor ?? undefined, 2);
+    expect(secondPage.items.map((task) => task.title)).toEqual(["One"]);
+    expect(secondPage.nextCursor).toBeNull();
+  });
+
+  test("returns copies so callers cannot mutate stored tasks", () => {
+    const store = new TaskStore(fixedClock());
+    const task = store.create({ title: "Review the API docs", tags: ["docs"] });
+    store.get(task.id)?.tags.push("mutated");
+
+    expect(store.get(task.id)?.tags).toEqual(["docs"]);
+  });
+
+  test("filters by status and tag", () => {
+    const store = new TaskStore(fixedClock());
+    const docs = store.create({ title: "Document rate limits", tags: ["docs"] });
+    store.create({ title: "Fix flaky test", tags: ["ci"] });
+    store.update(docs.id, { status: "done" });
+
+    expect(store.list({ status: "done" }).items).toHaveLength(1);
+    expect(store.list({ tag: "ci" }).items[0]?.title).toBe("Fix flaky test");
+  });
+});

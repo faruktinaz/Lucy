@@ -1,0 +1,3 @@
+[test]
+# Isolates config/state/cache/data directories in a temp dir and disposes leaked TUIs after each test.
+preload = ["./tests/setup.ts"]

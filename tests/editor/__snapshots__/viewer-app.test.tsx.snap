@@ -1,0 +1,72 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`file view text frames at 120x35 and 90x28: file view 120x35 1`] = `
+" orbit                                 ⌕ Search files and commands           Ctrl+P                               ◧  ⬓  
+     SIDEBAR                        ◦ main.ts ✕                                                                         
+                                    src ▸ main.ts                                                                 Edit  
+                                   1  export const answer = 42;                                                         
+     No views                      2  // a comment                                                                      
+                                   3  function greet(name: string) {                                                    
+     No feature contributes a      4    return \`hi \${name}\`;                                                            
+     sidebar view.                 5  }                                                                                 
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+  ❖                                                                                                                     
+                                                                                                                        
+                                            Read-only · E to edit  Ln 1, Col 1  TypeScript  UTF-8  LF  Catppuccin Mocha 
+"
+`;
+
+exports[`file view text frames at 120x35 and 90x28: file view 90x28 1`] = `
+" orbit                  ⌕ Search files and commands           Ctrl+P                ◧  ⬓  
+     SIDEBAR                        ◦ main.ts ✕                                           
+                                    src ▸ main.ts                                   Edit  
+                                   1  export const answer = 42;                           
+     No views                      2  // a comment                                        
+                                   3  function greet(name: string) {                      
+     No feature contributes a      4    return \`hi \${name}\`;                              
+     sidebar view.                 5  }                                                   
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+                                                                                          
+  ❖                                                                                       
+                                                                                          
+                                Read-only · E to edit  Ln 1, Col 1  TypeScript  UTF-8  LF 
+"
+`;
