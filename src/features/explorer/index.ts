@@ -37,11 +37,11 @@ export const explorerFeature: FeatureModule = {
         icon: "explorer",
         order: 10,
         command: "view.showExplorer",
+        // Three actions plus "more" fit a 30-column sidebar beside the title; New Folder and
+        // Refresh live in the more menu (the watcher refreshes on its own).
         actions: [
           { command: "explorer.newFile", icon: "add", title: "New File" },
-          { command: "explorer.newFolder", icon: "folder", title: "New Folder" },
           { command: "explorer.filter", icon: "search", title: "Filter Files" },
-          { command: "explorer.refresh", icon: "refresh", title: "Refresh Explorer" },
           { command: "explorer.collapseAll", icon: "collapseAll", title: "Collapse Folders" },
           { command: "explorer.moreActions", icon: "more", title: "More Actions" },
         ],

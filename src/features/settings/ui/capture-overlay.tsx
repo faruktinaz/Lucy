@@ -284,6 +284,8 @@ export function openCaptureOverlay(
     layer = ctx.overlays.push({
       id: "keybindingCapture",
       modal: true,
+      // Ctrl+Q and the leader are shortcuts a user may want to record.
+      capturesQuit: true,
       dim: true,
       handleKey,
       dismiss: () => vm.cancel(),

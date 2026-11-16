@@ -8,7 +8,7 @@ import { defineScenario, type ScenarioContext, SIZES, until } from "../screensho
 const PANEL_SIZES = [SIZES.wide, SIZES.medium];
 const MULTI_HUNK_FILE = "src/server/routes/tasks.ts";
 
-async function showSourceControl(app: ScenarioContext): Promise<void> {
+export async function showSourceControl(app: ScenarioContext): Promise<void> {
   await app.tui.act(() => app.ctx.commands.execute("view.showSourceControl"));
   await until(
     app,
@@ -16,7 +16,7 @@ async function showSourceControl(app: ScenarioContext): Promise<void> {
   );
 }
 
-async function openDiff(app: ScenarioContext, path: string, staged = false): Promise<void> {
+export async function openDiff(app: ScenarioContext, path: string, staged = false): Promise<void> {
   await app.tui.act(() => {
     app.ctx.editors.open({ kind: "diff", resource: path, params: staged ? { staged: true } : undefined });
   });

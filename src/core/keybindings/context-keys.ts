@@ -15,6 +15,10 @@ export const CONTEXT_KEYS = {
   editorFocus: "editorFocus",
   /** The sidebar has focus. */
   sidebarFocus: "sidebarFocus",
+  /** The auxiliary (AI) panel has focus. */
+  auxiliaryFocus: "auxiliaryFocus",
+  /** The bottom panel (terminals) has focus. */
+  panelFocus: "panelFocus",
   /** The visible sidebar view: "explorer", "search" or "scm". */
   sidebarView: "sidebarView",
   /** The commit message input has focus. */
@@ -22,6 +26,17 @@ export const CONTEXT_KEYS = {
   /** A modal overlay (palette, dialog) is open. */
   overlayOpen: "overlayOpen",
 } as const;
+
+/**
+ * Groups of context keys of which at most one is truthy at any time. The conflict analysis
+ * (`whenOverlap`) cannot know this from the expressions alone, so it is declared here: without
+ * it, `editorFocus` and `sidebarFocus` bindings on the same key would be reported as clashing
+ * although they can never fire together. Only declare a group the UI really guarantees.
+ */
+export const EXCLUSIVE_CONTEXT_KEY_GROUPS: readonly (readonly string[])[] = [
+  // The focus service sets exactly one workbench zone key at a time (see `FocusService`).
+  [CONTEXT_KEYS.sidebarFocus, CONTEXT_KEYS.editorFocus, CONTEXT_KEYS.auxiliaryFocus, CONTEXT_KEYS.panelFocus],
+];
 
 export interface ContextReader {
   get(key: string): unknown;

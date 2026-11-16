@@ -1168,7 +1168,12 @@ export function SettingsEditor({ focused }: EditorViewProps) {
         <HintLine items={footerHints} />
         <text selectable={false} wrapMode="none" fg={c.fg.subtle}>
           {"Saved in "}
-          <span fg={c.fg.muted}>{truncateMiddle(state.file.displayPath, Math.max(8, footerWidth - 9))}</span>
+          <span fg={c.fg.muted}>
+            {/* Demo mode writes to a throwaway temp directory whose path tells the reader nothing. */}
+            {app.env.demo
+              ? "a temporary demo folder, removed on quit"
+              : truncateMiddle(state.file.displayPath, Math.max(8, footerWidth - 9))}
+          </span>
         </text>
         {promise.map((line) => (
           <text key={line} selectable={false} wrapMode="none" fg={c.fg.subtle}>

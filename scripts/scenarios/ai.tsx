@@ -8,7 +8,7 @@ import { defineScenario, SIZES, until } from "../screenshots";
 const sizes = [SIZES.wide, SIZES.medium];
 const DAY = 24 * 60 * 60 * 1000;
 
-function agentMount(options: Parameters<typeof fakeProvider>[0] = {}) {
+export function agentMount(options: Parameters<typeof fakeProvider>[0] = {}) {
   const spawn = scriptedSpawn(() => ({ start: DEMO_AGENT_TRANSCRIPT }));
   return { ptySpawn: spawn.spawn, agentProviders: [fakeProvider(options)] };
 }

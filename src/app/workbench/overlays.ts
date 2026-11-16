@@ -16,6 +16,11 @@ export interface OverlayLayer {
   readonly acceptsText?: boolean;
   /** Returns true when the key was used. */
   handleKey?(stroke: KeyStroke): boolean;
+  /**
+   * The layer needs Ctrl+Q and the leader as ordinary keys (it records shortcuts). Every other
+   * modal layer lets the quit bindings through, so the app can always be quit.
+   */
+  readonly capturesQuit?: boolean;
   /** Closes the overlay (Escape, a click on the backdrop). */
   dismiss(): void;
   /**

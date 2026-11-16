@@ -53,6 +53,8 @@ High Contrast never relies on color alone (`theme.highContrast` is true for AAA 
 | Panel titles | always bold; the focused one is bold and accent |
 | Active editor tab / panel tab | bold / underlined |
 | Activity bar | the active icon is bold (all themes also show an edge marker) |
+| Region edges | the sidebar and auxiliary panel resize handles stay drawn as a thin `border.subtle` line |
+| Text fields | a `▏ ▕` keyline in the padding cells (`border.default`, `border.focus` when focused) |
 | Buttons | focus is bold and underlined in every theme |
 | Pending key sequence | the hint text is bold |
 
@@ -60,7 +62,8 @@ High Contrast never relies on color alone (`theme.highContrast` is true for AAA 
 
 | Region | Fill | Text |
 | --- | --- | --- |
-| Command bar, activity bar, sidebar, tab strip, auxiliary panel, bottom panel, status bar | `bg.surface` | muted; key facts default |
+| Command bar, sidebar, tab strip, auxiliary panel, bottom panel, status bar | `bg.surface` | muted; key facts default |
+| Activity bar (a column of its own, apart from the sidebar) | `bg.inset` | subtle; active default |
 | Editor canvas, active tab, breadcrumb, Welcome | `bg.base` | default; breadcrumb subtle |
 | Search pill, ghost buttons, toasts | `bg.raised` | subtle / muted / default |
 | Text inputs | `bg.inset` | default, placeholder subtle |
@@ -192,9 +195,10 @@ Git state).
   `bg.raised` pill that opens Quick Open and shows its keybinding, layout toggles on the right
   (sidebar, bottom panel, AI panel; default color when on).
 - **Activity bar** (4 columns): one icon per sidebar view; the active view has an accent `▎`
-  on the outer edge and a default-colored icon, others are subtle. In comfortable density
-  each item takes two rows and the badge (accent count) sits on the second row under the icon;
-  compact puts it beside the icon. A gear at the bottom opens the preferences menu.
+  on the outer edge and a default-colored icon, others are subtle. The bar sits on `bg.inset`,
+  so it reads as its own column. In comfortable density each item takes two rows and the
+  badge (a `badge.bg` pill) hangs under the icon, starting in the icon's column; compact puts
+  it beside the icon. A gear at the bottom opens the preferences menu.
 - **Sidebar**: `PanelHeader`, then the active view; every view stays mounted. A resize handle
   sits on its inner edge.
 - **Editor area**: tab strip, breadcrumb (subtle path, last segment muted), then the active

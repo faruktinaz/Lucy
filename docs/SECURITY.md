@@ -1,10 +1,8 @@
 # Security
 
 This document describes what Lucy Workspace does with your code and your machine, as the code
-stands today (version 0.1.0). The non-UI layers (core, adapters, services) are finished; the UI is
-in progress, and the application entry point (`src/main.ts`, `bin/lucy`) is not in the repository
-yet. Where a statement depends on wiring that does not exist yet, it says so. Every other statement
-was checked against the source file named next to it.
+stands today (version 0.1.0). Where something is planned rather than implemented, it says so. Every other
+statement was checked against the source file named next to it.
 
 ## 1. Principles
 
@@ -37,7 +35,8 @@ Library code that can reach the network but is not used by Lucy:
   DevTools server, if one is running. `importWithoutReactDevTools` (`src/core/react-devtools.ts`)
   hides `DEV` only while that module graph is first imported and restores it, so the attempt never
   happens and your own `DEV` still reaches the embedded terminal (`tests/security/react-devtools.test.ts`).
-  The bootstrap that must use it is part of the entry point that does not exist yet.
+  The launcher `bin/lucy` loads the whole application through it, and `src/main.ts` deliberately has
+  no self-run block, so `bin/lucy` is the only way to start the app.
 
 **Never modifies other tools' configuration.** No code writes shell startup files, Ghostty, tmux,
 Atuin, Git config or Claude Code files (`~/.claude/`, `~/.claude.json`). Git settings Lucy needs are
@@ -60,8 +59,8 @@ be overridden with `LUCY_CONFIG_DIR`, `LUCY_STATE_DIR`, `LUCY_CACHE_DIR` (`src/c
 
 Background Git reads run with `GIT_OPTIONAL_LOCKS=0`, so they never take `index.lock` or rewrite the
 index. OpenTUI's own default data folder (`~/.local/share/opentui`) is redirected by
-`configureOpenTuiDataPath` (`src/adapters/syntax/opentui-data-path.ts`); the bootstrap that must call
-it is part of the entry point that does not exist yet. A binary built with `bun build --compile`
+`configureOpenTuiDataPath` (`src/adapters/syntax/opentui-data-path.ts`), which `src/main.ts` calls
+with `<cache>/opentui` before the renderer is created. A binary built with `bun build --compile`
 would unpack OpenTUI's native library into `$TMPDIR` on every launch (`docs/dev/OPENTUI_NOTES.md`
 section 14); no such build is produced today.
 
@@ -148,8 +147,8 @@ Redaction is pattern based: a secret in another format inside a free-text messag
 **Never logged.** Terminal (PTY) input and output: only the process id, the program name, the
 size and the exit code are logged, not the arguments. Claude Code transcript contents. Commit
 messages travel on stdin, not in logged arguments. The logger is a no-op until `configureLogger` is
-called, which the missing entry point will do; the planned file is `<state>/logs/lucy.log`.
-`src/app/log-file.ts` describes rotation at 2 MiB, but no rotation code exists yet.
+called; `src/main.ts` points it at `<state>/logs/lucy.log` at startup. When that file is larger
+than 2 MiB at startup it is renamed to `lucy.log.1` (one previous file is kept).
 
 OpenTUI honors its own debugging variables, which Lucy neither sets nor clears:
 `OTUI_STDIN_LOG=<file>` records raw keyboard input (including anything typed into a terminal, such
@@ -164,8 +163,9 @@ as passwords) and `OTUI_DUMP_CAPTURES` dumps captured console output on exit.
 | Undo trash | `<state>/trash/<workspace-id>/` | Full copies of every file and folder you deleted in Lucy (which may include `.env` files), plus the original path | Folders `0700`; payloads keep their original mode |
 | Log file (planned) | `<state>/logs/lucy.log` | Redacted diagnostics | `0600`, in a `0700` directory |
 
-Trashed items stay until pruned. A pruning function exists (`FileOps.pruneTrash`), but nothing
-calls it yet, so the trash grows until you delete it by hand.
+Trashed items stay until pruned. The app prunes the trash once after the first paint
+(`FileOps.pruneTrash` from `src/app/domain/domain-services.ts`: items older than 30 days, and the
+oldest items beyond 512 MiB in total).
 
 ### Needs analysis: encrypted local storage
 

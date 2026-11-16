@@ -16,7 +16,8 @@ export function createTempDirs(prefix: string): () => string {
   });
   return () => {
     // realpath: on macOS tmpdir() is a symlink (/var -> /private/var).
-    const dir = realpathSync(mkdtempSync(join(tmpdir(), `lucy-editor-${prefix}-`)));
+    const base = process.env.LUCY_TEST_ROOT ?? tmpdir();
+    const dir = realpathSync(mkdtempSync(join(base, `lucy-editor-${prefix}-`)));
     created.push(dir);
     return dir;
   };

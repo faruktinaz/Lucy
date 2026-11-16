@@ -26,7 +26,7 @@ import {
   sequenceToString,
 } from "@/core/keybindings";
 import { type Logger, log as rootLog } from "@/core/log";
-import type { AppDirs } from "@/core/paths";
+import { type AppDirs, tildify } from "@/core/paths";
 import type { ResolvedWorkspace, Workspace, WorkspaceNotice } from "@/core/workspace";
 import { WorkspaceStateStore } from "@/core/workspace";
 import { ComponentGallery } from "../ui/gallery/component-gallery";
@@ -530,14 +530,22 @@ export async function createApp(options: CreateAppOptions): Promise<CreatedApp> 
   }
   if (config.problems.length > 0) {
     const first = config.problems[0];
+    // A problem without a setting path is about the whole file (a TOML syntax error): saying
+    // "a setting was ignored" would be wrong, and its message already names the file.
+    const wholeFile = first !== undefined && first.path === "";
     notifications.show({
       key: "config-problems",
       severity: "warning",
-      title:
-        config.problems.length === 1
+      title: wholeFile
+        ? "config.toml has a syntax error"
+        : config.problems.length === 1
           ? "A setting in config.toml was ignored"
           : `${config.problems.length} settings in config.toml were ignored`,
-      message: first ? `${first.message} (${config.path})` : config.path,
+      message: wholeFile
+        ? `${first.message}${first.line ? ` See line ${first.line}.` : ""}`
+        : first
+          ? `${first.message} (${tildify(config.path)})`
+          : tildify(config.path),
       // The Settings editor lists every problem and opens the file.
       actions: commands.has("settings.open")
         ? [{ label: "Show Problems", run: () => void context.run("settings.open") }]

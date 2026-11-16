@@ -560,15 +560,26 @@ export function DiffEditorView({
       />
     );
   } else if (doc.isEmpty) {
+    // A pure rename (similarity 100%) has a patch but no hunks; "No changes" would be wrong.
+    const moved =
+      (doc.diff.status === "renamed" || doc.diff.status === "copied") && doc.diff.oldPath ? doc.diff : null;
     body = (
       <EmptyState
-        title={doc.modeChange ? "Only the file mode changed" : "No changes"}
+        title={
+          moved
+            ? `${moved.status === "renamed" ? "Renamed" : "Copied"} without content changes`
+            : doc.modeChange
+              ? "Only the file mode changed"
+              : "No changes"
+        }
         description={
-          doc.modeChange
-            ? `${doc.modeChange.oldMode} → ${doc.modeChange.newMode}`
-            : staged
-              ? "Nothing is staged for this file."
-              : "The file matches its staged version."
+          moved
+            ? `From ${moved.oldPath}`
+            : doc.modeChange
+              ? `${doc.modeChange.oldMode} → ${doc.modeChange.newMode}`
+              : staged
+                ? "Nothing is staged for this file."
+                : "The file matches its staged version."
         }
       />
     );

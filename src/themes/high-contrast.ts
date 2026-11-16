@@ -11,6 +11,8 @@ const p = {
   black: "#000000",
   canvas: "#0a0a0a",
   raised: "#1c1c1c",
+  // Fields and the activity bar: a step away from both the black chrome and the canvas.
+  inset: "#202020",
   overlay: "#141414",
   hover: "#262626",
   active: "#333333",
@@ -70,7 +72,7 @@ export const highContrast = defineTheme({
   },
   defaultAccent: "blue",
   build: (accent) => ({
-    bg: { base: p.canvas, surface: p.black, raised: p.raised, overlay: p.overlay, inset: p.black },
+    bg: { base: p.canvas, surface: p.black, raised: p.raised, overlay: p.overlay, inset: p.inset },
     fg: {
       default: p.white,
       muted: p.grey95,

@@ -34,6 +34,8 @@ process.env.LUCY_TEST_ROOT = root;
 
 function removeRoot(): void {
   try {
+    // Some tests chmod folders to 000; give access back so the removal cannot fail half way.
+    Bun.spawnSync(["chmod", "-R", "u+rwx", root]);
     rmSync(root, { recursive: true, force: true });
   } catch {
     // Best effort: the OS temp directory is cleaned eventually anyway.

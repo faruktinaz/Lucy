@@ -119,8 +119,9 @@ export function ResizeHandle({ edge, size, onResize, onResizeEnd, hint, forceAct
         hoverHint.onMouseOut();
       }}
     >
-      {active ? (
-        <text fg={theme.colors.accent.primary} selectable={false}>
+      {/* High Contrast keeps the line at rest: neighbouring regions differ only slightly in fill. */}
+      {active || theme.highContrast ? (
+        <text fg={active ? theme.colors.accent.primary : theme.colors.border.subtle} selectable={false}>
           {`${glyph}\n`.repeat(300)}
         </text>
       ) : null}

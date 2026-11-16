@@ -50,6 +50,8 @@ export interface MountAppOptions extends Omit<MountOptions, "renderer"> {
    * `real`: the Git CLI (with the demo's isolated environment for the demo workspace).
    */
   git?: "mock" | "real" | MockGitAdapterOptions;
+  /** Environment for real Git (e.g. a fixture repository's isolated `env`). Default: the demo's. */
+  gitEnv?: Record<string, string | undefined>;
   /** Settings applied in memory after loading (nothing is written). */
   settings?: SettingOverrides;
   features?: readonly FeatureModule[];
@@ -148,7 +150,7 @@ export async function mountApp(options: MountAppOptions = {}): Promise<MountedAp
 
   let mockGit: MockGitAdapter | undefined;
   let gitAdapterFactory: GitAdapterFactory | undefined;
-  const toolEnv = demo ? isolatedGitEnv(demo.containerDir) : undefined;
+  const toolEnv = options.gitEnv ?? (demo ? isolatedGitEnv(demo.containerDir) : undefined);
   const gitMode = options.git ?? (demo ? "real" : "mock");
   if (gitMode === "real") {
     gitAdapterFactory = createGitAdapterFactory(resolved.workspace.root, { env: toolEnv });

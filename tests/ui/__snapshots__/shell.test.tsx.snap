@@ -2,7 +2,7 @@
 
 exports[`shell text snapshots 120x35 1`] = `
 " atlas                                 ⌕ Search files and commands           Ctrl+P                            ◧  ⬓  ◨  
-▎ ⧉  EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯                                                                                        
+▎ ⧉  EXPLORER         +  ⌕  ⊟  ⋯                                                                                        
      ▸ ◫ src                    ◉                                                                                       
   ⌕    ◦ package.json                                                                                                   
        ◦ README.md              M                                                                                       
@@ -41,7 +41,7 @@ exports[`shell text snapshots 120x35 1`] = `
 
 exports[`shell text snapshots 90x28 1`] = `
 " atlas                  ⌕ Search files and commands           Ctrl+P             ◧  ⬓  ◨  
-▎ ⧉  EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯                                                          
+▎ ⧉  EXPLORER         +  ⌕  ⊟  ⋯                                                          
      ▸ ◫ src                    ◉                                                         
   ⌕    ◦ package.json                                                                     
        ◦ README.md              M                                                         

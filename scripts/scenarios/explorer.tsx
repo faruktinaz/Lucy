@@ -5,7 +5,7 @@ import { explorerControllerFor } from "@/features/explorer";
 import type { ExplorerController } from "@/features/explorer/explorer-controller";
 import { defineScenario, type ScenarioContext, SIZES, until } from "../screenshots";
 
-async function prepare(app: ScenarioContext): Promise<ExplorerController> {
+export async function prepare(app: ScenarioContext): Promise<ExplorerController> {
   const controller = explorerControllerFor(app.ctx);
   if (!controller) throw new Error("The explorer feature did not activate");
   await app.tui.act(() => controller.load());

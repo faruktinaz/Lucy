@@ -3,14 +3,11 @@
  * `bun run screenshots` (every file in this folder is imported before the run).
  */
 import type { MountedApp } from "../../tests/helpers/app";
-import { defineScenario, SIZES } from "../screenshots";
+import { defineScenario, SIZES, untilHighlighted } from "../screenshots";
 
-/**
- * Highlighting runs in a worker (cold start about 250 ms, OPENTUI_NOTES §8). The rest of the
- * screen is colored too, so a color count cannot tell when the code is done: give it time.
- */
+/** Highlighting runs in a worker (cold start about 250 ms, OPENTUI_NOTES §8). */
 async function waitForColors(app: MountedApp): Promise<void> {
-  await app.tui.advance(900);
+  await untilHighlighted(app);
 }
 
 async function openFile(app: MountedApp, path: string, line?: number, column?: number): Promise<void> {

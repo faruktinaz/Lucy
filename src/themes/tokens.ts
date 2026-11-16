@@ -9,10 +9,10 @@
 export const TOKEN_DEFINITIONS = {
   bg: {
     base: "Canvas and editor area. Everything else is layered relative to it.",
-    surface: "Chrome: sidebar, activity bar, status bar, tab strip, panel headers.",
+    surface: "Chrome: sidebar, status bar, tab strip, panel headers.",
     raised: "Elevated elements inside base or surface: buttons, chips, inactive tabs on hover.",
     overlay: "Floating layers: command palette, menus, dialogs, toasts, tooltips.",
-    inset: "Sunken fields: text inputs, search boxes, the commit message editor.",
+    inset: "Sunken fields: text inputs, search boxes, the commit message editor; the activity bar column.",
   },
   fg: {
     default: "Body text and primary labels.",

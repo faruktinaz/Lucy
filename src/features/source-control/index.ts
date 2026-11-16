@@ -27,6 +27,8 @@ function changeCount(state: GitState): number {
 }
 
 const SCM_VISIBLE = "sidebarView == 'scm'";
+/** The front tab is a diff. Spelled with `activeEditor` so the conflict analysis sees it excludes file-editor bindings. */
+const DIFF_ACTIVE = `scmDiffActive && activeEditor == '${DIFF_KIND}'`;
 
 export const sourceControlFeature: FeatureModule = {
   id: "source-control",
@@ -34,13 +36,15 @@ export const sourceControlFeature: FeatureModule = {
     { command: "git.stage", keys: ["ctrl+k s"], when: SCM_VISIBLE },
     { command: "git.unstage", keys: ["ctrl+k u"], when: SCM_VISIBLE },
     { command: "git.discard", keys: ["ctrl+k d"], when: SCM_VISIBLE },
-    { command: "git.refresh", keys: ["ctrl+k r"], when: SCM_VISIBLE },
-    { command: "git.focusCommitInput", keys: ["ctrl+k i"], when: SCM_VISIBLE },
+    // Ctrl+K R restarts the session while the AI panel has focus; refresh yields there.
+    { command: "git.refresh", keys: ["ctrl+k r"], when: `${SCM_VISIBLE} && !auxiliaryFocus` },
+    // Not Ctrl+K I: that inserts an AI prompt template from anywhere. M as in "message".
+    { command: "git.focusCommitInput", keys: ["ctrl+k shift+m"], when: SCM_VISIBLE },
     { command: "git.checkout", keys: ["ctrl+k b"] },
     { command: "git.log", keys: ["ctrl+k h"] },
     { command: "git.diff.nextChange", keys: ["f7"], when: "scmDiffActive" },
     { command: "git.diff.previousChange", keys: ["shift+f7"], when: "scmDiffActive" },
-    { command: "git.diff.toggleLayout", keys: ["ctrl+k v"], when: "scmDiffActive" },
+    { command: "git.diff.toggleLayout", keys: ["ctrl+k v"], when: DIFF_ACTIVE },
   ],
   activate(ctx) {
     const store = new DisposableStore();

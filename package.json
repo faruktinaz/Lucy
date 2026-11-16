@@ -18,7 +18,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "check": "bun run typecheck && bun run lint && bun test",
-    "screenshots": "bun scripts/screenshots.ts"
+    "screenshots": "bun scripts/screenshots.ts",
+    "bench": "bun scripts/bench.ts"
   },
   "dependencies": {
     "@opentui/core": "0.9.1",

@@ -2,7 +2,7 @@
 
 exports[`Settings editor text snapshots at 120x35 and 90x28: settings-120x35 1`] = `
 " workspace-XXXXXX                      ⌕ Search files and commands           Ctrl+P                            ◧  ⬓  ◨  
-▎ ⧉  EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯    ❖ Settings ✕                                                                        
+▎ ⧉  EXPLORER         +  ⌕  ⊟  ⋯    ❖ Settings ✕                                                                        
                                     Preferences ▸ Settings                                                              
   ⌕                                                                                                                     
      This folder is empty            ⌕ Search settings by name, description or key                         44 settings  
@@ -41,7 +41,7 @@ exports[`Settings editor text snapshots at 120x35 and 90x28: settings-120x35 1`]
 
 exports[`Settings editor text snapshots at 120x35 and 90x28: settings-90x28 1`] = `
 " workspace-XXXXXX       ⌕ Search files and commands           Ctrl+P             ◧  ⬓  ◨  
-▎ ⧉  EXPLORER   +  ◫  ⌕  ↻  ⊟  ⋯    ❖ Settings ✕                                          
+▎ ⧉  EXPLORER         +  ⌕  ⊟  ⋯    ❖ Settings ✕                                          
                                     Preferences ▸ Settings                                
   ⌕                                                                                       
      This folder is empty            ⌕ Search settings by name, description  44 settings  

@@ -58,7 +58,10 @@ export function Welcome({ width, height }: { width: number; height: number }) {
   const c = theme.colors;
   const columnWidth = Math.max(24, Math.min(COLUMN_WIDTH, width - 4));
   const actions = ACTIONS.filter((action) => app.commands.has(action.command)).slice(0, height < 20 ? 4 : 6);
-  const location = truncateMiddle(tildify(app.workspace.root), columnWidth - 2);
+  // The demo lives in a long temporary path that says nothing to the reader; name it instead.
+  const location = app.env.demo
+    ? "Temporary copy, removed on quit"
+    : truncateMiddle(tildify(app.workspace.root), columnWidth - 2);
   return (
     <box
       flexGrow={1}
@@ -76,7 +79,7 @@ export function Welcome({ width, height }: { width: number; height: number }) {
         <box paddingX={1} flexShrink={0}>
           <text fg={c.fg.muted} selectable={false}>
             {app.workspace.name}
-            {app.env.demo ? <span fg={c.fg.subtle}>{"  demo workspace"}</span> : null}
+            {app.env.demo ? <span fg={c.fg.subtle}>{"  demo project"}</span> : null}
           </text>
         </box>
         <box paddingX={1} flexShrink={0}>

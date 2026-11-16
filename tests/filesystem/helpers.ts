@@ -31,7 +31,9 @@ export function createTempDirs(prefix = "lucy-test-"): () => Promise<string> {
     }
   });
   return async () => {
-    const dir = await realpath(await mkdtemp(join(tmpdir(), prefix)));
+    // Under the per-run root (tests/setup.ts removes it after the last file): this helper's own
+    // afterAll only runs for the first test file that imports it.
+    const dir = await realpath(await mkdtemp(join(process.env.LUCY_TEST_ROOT ?? tmpdir(), prefix)));
     created.push(dir);
     return dir;
   };

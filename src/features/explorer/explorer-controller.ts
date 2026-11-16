@@ -432,6 +432,9 @@ export class ExplorerController implements Disposable {
     const { config } = this.ctx;
     const undo = this.model.store.get().undoDescription;
     return [
+      { id: "newFolder", label: "New Folder…", command: "explorer.newFolder" },
+      { id: "refresh", label: "Refresh Explorer", command: "explorer.refresh" },
+      { kind: "separator", id: "sep-actions" },
       {
         id: "hidden",
         label: "Show Hidden Files",
@@ -445,7 +448,6 @@ export class ExplorerController implements Disposable {
         checked: config.get("explorer.showIgnored"),
       },
       { kind: "separator", id: "sep" },
-      { id: "filter", label: "Filter Files…", command: "explorer.filter" },
       {
         id: "undo",
         label: undo ? `Undo: ${truncateMiddle(sanitizeForDisplay(undo), 48)}` : "Undo File Operation",

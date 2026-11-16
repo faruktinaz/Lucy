@@ -1,7 +1,8 @@
 /**
  * The activity bar: one icon per sidebar view. The active view is marked by an accent bar on
  * the outer edge and default-colored icon; the others are subtle. Views with a badge (Source
- * Control's change count) show it beside the icon. A gear at the bottom opens the
+ * Control's change count) show it as a filled pill under the icon (beside it when compact).
+ * The bar sits on `bg.inset`, a column visibly apart from the sidebar. A gear at the bottom opens the
  * preferences menu.
  */
 import { useApp, useStore } from "@/app/react";
@@ -58,6 +59,13 @@ function ActivityItem({
       {icon(view.icon, theme.icons)}
     </text>
   );
+  const badgeCell = (
+    <text selectable={false}>
+      <span fg={c.badge.fg} bg={c.badge.bg} attributes={attrs({ bold: true })}>
+        {count}
+      </span>
+    </text>
+  );
   const markerCell = (
     <text fg={c.accent.primary} selectable={false} width={1} flexShrink={0}>
       {marker}
@@ -70,9 +78,9 @@ function ActivityItem({
         <box width={1} flexShrink={0}>
           {iconCell}
         </box>
-        <text fg={c.accent.primary} selectable={false} width={2} flexShrink={0}>
-          {count.padStart(2, " ")}
-        </text>
+        <box width={2} flexShrink={0} flexDirection="row">
+          {count ? badgeCell : null}
+        </box>
         {side === "right" ? markerCell : null}
       </box>
     );
@@ -86,11 +94,10 @@ function ActivityItem({
         </box>
         {side === "right" ? markerCell : null}
       </box>
-      {/* The count sits under the icon, kept away from the sidebar's first column. */}
-      <box height={1} flexDirection="row" paddingLeft={count.length > 1 ? 1 : 2}>
-        <text fg={c.accent.primary} selectable={false} attributes={attrs({ bold: theme.highContrast })}>
-          {count}
-        </text>
+      {/* The count hangs from the icon's column as a filled pill: plain digits at the left
+          edge read as line numbers of the sidebar beside it. */}
+      <box height={1} flexDirection="row" paddingLeft={side === "left" ? 2 : 1}>
+        {count ? badgeCell : null}
       </box>
     </box>
   );
@@ -146,7 +153,8 @@ export function ActivityBar({ side }: { side: "left" | "right" }) {
       width={SIZE.activityBarWidth}
       flexShrink={0}
       flexDirection="column"
-      backgroundColor={theme.colors.bg.surface}
+      // A column of its own: the sunken fill sets the view switcher apart from the sidebar.
+      backgroundColor={theme.colors.bg.inset}
     >
       {views.map((view) => (
         <ActivityItem

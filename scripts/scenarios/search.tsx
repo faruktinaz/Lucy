@@ -11,7 +11,11 @@ async function showSearch(app: ScenarioContext): Promise<void> {
 }
 
 /** Types a query into the focused pattern field and waits for the finished summary. */
-async function search(app: ScenarioContext, text: string, done: string | RegExp = SUMMARY): Promise<void> {
+export async function search(
+  app: ScenarioContext,
+  text: string,
+  done: string | RegExp = SUMMARY,
+): Promise<void> {
   await showSearch(app);
   await app.tui.type(text);
   await app.tui.waitForText(done, { timeoutMs: 10_000 });

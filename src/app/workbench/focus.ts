@@ -8,7 +8,7 @@
  * from whatever had it, so typing never lands in a stale input.
  */
 import { type Disposable, Emitter, toDisposable } from "@/core/events";
-import type { ContextKeys } from "@/core/keybindings";
+import { CONTEXT_KEYS, type ContextKeys } from "@/core/keybindings";
 import type { KeyStroke } from "@/core/keybindings/key-stroke";
 import { Store } from "@/core/store";
 import type { FocusZone } from "./layout-compute";
@@ -20,10 +20,10 @@ export type FocusDirection = "left" | "right" | "up" | "down";
 
 /** Context keys set by the focus service. */
 export const FOCUS_CONTEXT_KEYS: Readonly<Record<FocusZone, string>> = {
-  sidebar: "sidebarFocus",
-  editor: "editorFocus",
-  auxiliary: "auxiliaryFocus",
-  bottom: "panelFocus",
+  sidebar: CONTEXT_KEYS.sidebarFocus,
+  editor: CONTEXT_KEYS.editorFocus,
+  auxiliary: CONTEXT_KEYS.auxiliaryFocus,
+  bottom: CONTEXT_KEYS.panelFocus,
 };
 
 export interface FocusState {

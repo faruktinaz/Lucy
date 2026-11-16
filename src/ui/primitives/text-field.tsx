@@ -2,7 +2,7 @@
  * Text inputs on the inset surface. While one has renderable focus the router sets the
  * `inputFocus` context key, so typing never triggers a keybinding.
  */
-import type { InputRenderable, TextareaRenderable } from "@opentui/core";
+import type { InputRenderable, RGBA, TextareaRenderable } from "@opentui/core";
 import { type Ref, useImperativeHandle, useRef } from "react";
 import type { IconName } from "@/themes/icons";
 import { useTheme } from "../theme/theme-context";
@@ -63,8 +63,19 @@ export function TextField({
   );
   const bg = inset ? c.bg.inset : undefined;
   const iconColor = invalid ? c.status.error : focused ? c.accent.primary : c.fg.subtle;
+  // High Contrast frames the field in its padding cells, so it does not rely on the fill alone.
+  const framed = inset && theme.highContrast;
+  const edgeColor = invalid ? c.status.error : focused ? c.border.focus : c.border.default;
   return (
-    <box height={1} flexDirection="row" backgroundColor={bg} paddingX={1} width={width} flexShrink={0}>
+    <box
+      height={1}
+      flexDirection="row"
+      backgroundColor={bg}
+      paddingX={framed ? 0 : 1}
+      width={width}
+      flexShrink={0}
+    >
+      {framed ? <FieldEdge side="left" color={edgeColor} height={1} /> : null}
       {icon ? (
         <text fg={iconColor} selectable={false} flexShrink={0}>
           <Icon name={icon} color={iconColor} />
@@ -87,7 +98,18 @@ export function TextField({
         onInput={onInput}
         onSubmit={onSubmit}
       />
+      {framed ? <FieldEdge side="right" color={edgeColor} height={1} /> : null}
     </box>
+  );
+}
+
+/** A one-eighth block line on a field's outer edge (High Contrast); it fills a padding cell. */
+function FieldEdge({ side, color, height }: { side: "left" | "right"; color: RGBA; height: number }) {
+  const glyph = side === "left" ? "▏" : "▕";
+  return (
+    <text fg={color} selectable={false} width={1} flexShrink={0}>
+      {Array.from({ length: height }, () => glyph).join("\n")}
+    </text>
   );
 }
 
@@ -115,8 +137,17 @@ export function TextAreaField({
   const c = theme.colors;
   const area = useRef<TextareaRenderable>(null);
   useImperativeHandle(ref, () => area.current as TextareaRenderable, []);
+  const framed = theme.highContrast;
+  const edgeColor = focused ? c.border.focus : c.border.default;
   return (
-    <box height={height} backgroundColor={c.bg.inset} paddingX={1} flexShrink={0}>
+    <box
+      height={height}
+      flexDirection="row"
+      backgroundColor={c.bg.inset}
+      paddingX={framed ? 0 : 1}
+      flexShrink={0}
+    >
+      {framed ? <FieldEdge side="left" color={edgeColor} height={height} /> : null}
       <textarea
         ref={area}
         flexGrow={1}
@@ -134,6 +165,7 @@ export function TextAreaField({
         onContentChange={() => onContentChange?.(area.current?.plainText ?? "")}
         onSubmit={() => onSubmit?.(area.current?.plainText ?? "")}
       />
+      {framed ? <FieldEdge side="right" color={edgeColor} height={height} /> : null}
     </box>
   );
 }

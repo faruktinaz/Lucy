@@ -20,9 +20,12 @@ import { type Disposable, toDisposable } from "@/core/events";
 import {
   type Chord,
   type ContextKeys,
+  chordToString,
   formatChord,
   type KeybindingRegistry,
   normalizeKey,
+  sequenceToString,
+  strokeCandidates,
 } from "@/core/keybindings";
 import { isTypingStroke, type KeyStroke } from "@/core/keybindings/key-stroke";
 import type { Logger } from "@/core/log";
@@ -39,6 +42,9 @@ export const LEADER_PASSTHROUGH_COMMAND = "leader.sendKey";
 
 /** The leader chord, as written in keybindings. */
 export const LEADER_CHORD = "ctrl+\\";
+
+/** The command that quits; it stays reachable under modal overlays (see `routeQuit`). */
+const QUIT_COMMAND = "app.quit";
 
 export interface FocusedWidget {
   /** An embedded terminal (or a widget registered as one) has renderable focus. */
@@ -154,6 +160,10 @@ export class KeyRouter implements Disposable {
 
     // Layer 1: overlays.
     const top = overlays.top;
+    if (top?.modal && !top.capturesQuit && this.routeQuit(stroke)) {
+      consume();
+      return;
+    }
     if (top) {
       if (top.handleKey?.(stroke)) {
         consume();
@@ -206,6 +216,41 @@ export class KeyRouter implements Disposable {
     if (widget.terminal) return;
     if (focus.handleKey(stroke, { inputFocused: widget.input, typing: isTypingStroke(stroke) })) consume();
     // Layer 4: fall through to the focused widget.
+  }
+
+  /**
+   * Quitting must work from every modal overlay (a first-run onboarding card takes every key,
+   * and a user who cannot get out of it closes the terminal instead). So under a modal overlay
+   * the router looks at quit bindings before the overlay does: a single-chord quit binding
+   * (Ctrl+Q) runs `app.quit`, and the leader form (Ctrl+\ Q) is followed through the registry.
+   * Any other leader sequence is swallowed, as the modal overlay would have done. Overlays that
+   * record shortcuts set `capturesQuit` and are skipped. Returns true when the key was used.
+   */
+  private routeQuit(stroke: KeyStroke): boolean {
+    const { keybindings, contextKeys, commands } = this.options;
+    const quitKeys = keybindings.bindingsFor(QUIT_COMMAND).map(sequenceToString);
+    const run = () => {
+      commands.execute(QUIT_COMMAND).catch(() => {
+        // Reported through `commands.onDidFail`.
+      });
+    };
+    const pending = keybindings.pending;
+    if (pending && chordToString(pending) === LEADER_CHORD) {
+      const result = keybindings.resolve(stroke, contextKeys);
+      if (result.kind === "command" && result.command === QUIT_COMMAND) run();
+      return true;
+    }
+    if (pending) return false;
+    const candidates = strokeCandidates(stroke).map(chordToString);
+    if (candidates.some((chord) => quitKeys.includes(chord))) {
+      run();
+      return true;
+    }
+    if (candidates.includes(LEADER_CHORD) && quitKeys.some((key) => key.startsWith(`${LEADER_CHORD} `))) {
+      keybindings.resolve(stroke, contextKeys);
+      return true;
+    }
+    return false;
   }
 
   private describePending(prefix: Chord): string {

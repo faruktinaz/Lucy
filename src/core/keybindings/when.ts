@@ -233,8 +233,14 @@ const MAX_ASSIGNMENTS = 4096;
  * Whether two `when` clauses can both be true in some context (undefined means "always").
  * Decided exactly by enumerating the relevant values of every key involved; expressions are
  * tiny, and if the space ever grows too large the answer is conservatively "yes".
+ * `exclusiveGroups` lists keys of which at most one can be truthy at a time (focus zones);
+ * contexts that violate a group are skipped because they never occur.
  */
-export function whenOverlap(a: WhenExpr | undefined, b: WhenExpr | undefined): boolean {
+export function whenOverlap(
+  a: WhenExpr | undefined,
+  b: WhenExpr | undefined,
+  exclusiveGroups: readonly (readonly string[])[] = [],
+): boolean {
   const keys = new Map<string, Set<string>>();
   if (a) whenKeys(a, keys);
   if (b) whenKeys(b, keys);
@@ -251,6 +257,10 @@ export function whenOverlap(a: WhenExpr | undefined, b: WhenExpr | undefined): b
       rest = Math.floor(rest / domain.length);
     });
     const lookup = (key: string) => values.get(key);
+    const impossible = exclusiveGroups.some(
+      (group) => group.filter((key) => isTruthy(values.get(key))).length > 1,
+    );
+    if (impossible) continue;
     if ((!a || evaluateWhen(a, lookup)) && (!b || evaluateWhen(b, lookup))) return true;
   }
   return false;

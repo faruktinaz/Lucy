@@ -20,9 +20,10 @@
  * a demo workspace whose Git state shows every Source Control situation. Nothing touches the
  * user's directories: config, state, cache and the Tree-sitter data dir are temporary.
  */
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
+import { CodeRenderable, type Renderable } from "@opentui/core";
 import { buildDemoWorkspace, type DemoWorkspace } from "@/app/demo";
 import { THEME_IDS, type ThemeId } from "@/themes";
 import { type MountAppOptions, type MountedApp, mountApp } from "../tests/helpers/app";
@@ -52,6 +53,11 @@ export interface ScenarioOptions {
   /** Extra mount options (settings, a conflict demo, ...). */
   readonly mount?: Partial<MountAppOptions>;
   readonly description?: string;
+  /**
+   * Also copy the PNG to `docs/images/<readmeImage>.png` (the committed README images; only
+   * with the default output folder). Give such a scenario exactly one theme and size.
+   */
+  readonly readmeImage?: string;
 }
 
 interface Scenario {
@@ -78,6 +84,9 @@ export function listScenarios(): readonly { name: string; description?: string }
   return registry.map((s) => ({ name: s.name, description: s.options.description }));
 }
 
+const DEFAULT_OUT_DIR = resolve(import.meta.dir, "..", "docs", "screenshots");
+const README_IMAGES_DIR = resolve(import.meta.dir, "..", "docs", "images");
+
 const DEFAULT_THEMES: readonly ThemeId[] = ["catppuccin-mocha", "high-contrast"];
 const DEFAULT_SIZES: readonly ScreenshotSize[] = [SIZES.wide, SIZES.medium, SIZES.narrow];
 
@@ -86,6 +95,55 @@ export async function until(app: MountedApp, predicate: () => boolean, timeoutMs
   const deadline = performance.now() + timeoutMs;
   while (!predicate()) {
     if (performance.now() > deadline) throw new Error("Timed out waiting for a scenario condition");
+    await app.tui.advance(20);
+  }
+  await app.tui.settle();
+}
+
+/** Visible code views with a language, whose syntax colors come from the highlighter worker. */
+function highlightableCodeViews(app: MountedApp): CodeRenderable[] {
+  const found: CodeRenderable[] = [];
+  const walk = (node: Renderable) => {
+    if (!node.visible) return;
+    if (node instanceof CodeRenderable) {
+      if (node.filetype && node.content.trim() !== "" && node.width > 0 && node.height > 0) found.push(node);
+      return;
+    }
+    for (const child of node.getChildren()) walk(child);
+  };
+  walk(app.tui.renderer.root);
+  return found;
+}
+
+/** Distinct foreground colors of the non-blank cells inside a code view. */
+function colorsInside(app: MountedApp, view: CodeRenderable): number {
+  const frame = app.tui.spans();
+  const colors = new Set<string>();
+  const left = view.screenX;
+  const right = left + view.width;
+  for (let y = Math.max(0, view.screenY); y < Math.min(frame.rows, view.screenY + view.height); y++) {
+    let x = 0;
+    for (const span of frame.lines[y]?.spans ?? []) {
+      if (x < right && x + span.width > left && span.text.trim() !== "") colors.add(span.fg.toInts().join());
+      x += span.width;
+    }
+  }
+  return colors.size;
+}
+
+/**
+ * Waits until every visible code view shows its syntax colors. Highlighting runs in a worker
+ * (cold start about 250 ms), so a fixed delay is either slow or flaky, and a color count over
+ * the whole frame cannot tell (the chrome is colored anyway). This looks at each code view's
+ * own cells: done when its highlighter is idle and the code shows at least three colors.
+ * Without a code view on screen it returns at once. The runner calls it before every capture.
+ */
+export async function untilHighlighted(app: MountedApp, timeoutMs = 8000): Promise<void> {
+  const done = () =>
+    highlightableCodeViews(app).every((view) => !view.isHighlighting && colorsInside(app, view) >= 3);
+  const deadline = performance.now() + timeoutMs;
+  while (!done()) {
+    if (performance.now() > deadline) throw new Error("Timed out waiting for syntax highlighting");
     await app.tui.advance(20);
   }
   await app.tui.settle();
@@ -122,7 +180,7 @@ interface RunOptions {
 }
 
 function parseArgs(argv: readonly string[]): RunOptions {
-  const options: RunOptions = { png: true, outDir: resolve(import.meta.dir, "..", "docs", "screenshots") };
+  const options: RunOptions = { png: true, outDir: DEFAULT_OUT_DIR };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--only") options.only = (argv[++i] ?? "").split(",").filter(Boolean);
@@ -179,11 +237,16 @@ async function main(): Promise<void> {
           const app = await mountScenario(workspace, theme, size, scenario.options.mount ?? {});
           try {
             await scenario.run({ ...app, theme, size });
-            await app.tui.settle();
+            await untilHighlighted(app);
             const base = join(options.outDir, theme, `${scenario.name}-${size.cols}x${size.rows}`);
             const saved = await saveScreenshot(app.tui.spans(), base, { png: options.png });
             rmSync(saved.html, { force: true });
             written++;
+            const readme = scenario.options.readmeImage;
+            if (readme && saved.png.status === "written" && options.outDir === DEFAULT_OUT_DIR) {
+              copyFileSync(saved.png.path, join(README_IMAGES_DIR, `${readme}.png`));
+              console.log(`docs/images/${readme}.png`);
+            }
             const png =
               saved.png.status === "written"
                 ? "png"

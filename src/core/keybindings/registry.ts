@@ -15,7 +15,7 @@
 import type { KeybindingOverrides } from "../config/schema";
 import { type Disposable, Emitter } from "../events";
 import { type Chord, chordToString, type KeySequence, sequenceToString, tryParseKeySequence } from "./chord";
-import { CONTEXT_KEYS, type ContextReader, contextFrom } from "./context-keys";
+import { CONTEXT_KEYS, type ContextReader, contextFrom, EXCLUSIVE_CONTEXT_KEY_GROUPS } from "./context-keys";
 import type { KeybindingDefinition } from "./defaults";
 import { isTypingStroke, type KeybindingMode, type KeyStroke, strokeCandidates } from "./key-stroke";
 import { type ChordSupportOptions, sequenceSupport } from "./terminal-support";
@@ -335,7 +335,7 @@ export class KeybindingRegistry implements Disposable {
         const a = rules[i];
         const b = rules[j];
         if (!a || !b || a.command === b.command) continue;
-        if (!whenOverlap(a.whenExpr, b.whenExpr)) continue;
+        if (!whenOverlap(a.whenExpr, b.whenExpr, EXCLUSIVE_CONTEXT_KEY_GROUPS)) continue;
         const firstA = chordToString(a.sequence[0] as Chord);
         const firstB = chordToString(b.sequence[0] as Chord);
         if (a.key === b.key) {

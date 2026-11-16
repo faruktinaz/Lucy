@@ -73,6 +73,13 @@ function StatusEntry({ item }: { item: StatusItem }) {
   );
 }
 
+/** Cells a hint needs to show in full: text, two spaces and its keys, plus the area's padding. */
+function hintWidth(hint: { text: string; keys?: string } | null): number {
+  if (!hint) return 0;
+  const keys = hint.keys ? formatKeys(hint.keys) : "";
+  return displayWidth(sanitizeForDisplay(hint.text)) + (keys ? displayWidth(keys) + 2 : 0) + 2;
+}
+
 function HintArea({ width }: { width: number }) {
   const app = useApp();
   const theme = useTheme();
@@ -106,8 +113,14 @@ export function StatusBar({ visible }: { visible: boolean }) {
   const app = useApp();
   const theme = useTheme();
   const items = useStore(app.statusBar.store);
+  const hints = useStore(app.hints.store);
   const { size, onSizeChange } = useMeasure();
-  const available = Math.max(0, size.width - MIN_HINT_WIDTH);
+  // A pending key sequence or an ambient hint ("Leave the terminal  Ctrl+\") is the one thing
+  // the user needs right now, so it gets its full width and lower-priority items drop instead.
+  // Hover and transient hints keep the minimum, so items do not jump around under the pointer.
+  const steady = app.hints.current === hints.pending || app.hints.current === hints.ambient;
+  const reserved = Math.max(MIN_HINT_WIDTH, steady ? hintWidth(app.hints.current) : 0);
+  const available = Math.max(0, size.width - reserved);
   const { left, right } = layoutStatusItems(items, available, itemWidth);
   const used = [...left, ...right].reduce((sum, item) => sum + itemWidth(item), 0);
   return (
