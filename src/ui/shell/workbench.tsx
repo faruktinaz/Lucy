@@ -1,7 +1,8 @@
 /**
- * The workbench: command bar, the main row (activity bar, sidebar, editor column with the
- * bottom panel, auxiliary panel), status bar, and the overlay host. Structure comes from
- * color blocks: side regions on `bg.surface`, the editor canvas on `bg.base`, no lines.
+ * The workbench: command bar, the main row of cards (sidebar, editor column with the bottom
+ * panel, agent panel), status bar, and the overlay host. Islands, not blocks: every region is
+ * a card floating on `bg.canvas`, one column apart, with softened corners (see `Card`); the
+ * bars sit directly on the canvas.
  *
  * Every part stays mounted; hidden parts use `visible={false}`, so live terminals survive
  * panel toggles, zen mode, the narrow drawer and the "terminal too small" screen.
@@ -12,7 +13,6 @@ import { LAYOUT_LIMITS } from "@/app/workbench/layout-compute";
 import { OverlayHost } from "../overlays/overlay-host";
 import { attrs } from "../primitives/text";
 import { LiveThemeProvider, useTheme } from "../theme/theme-context";
-import { ActivityBar } from "./activity-bar";
 import { CommandBar } from "./command-bar";
 import { EditorArea } from "./editor-area";
 import { AuxiliaryPanel, BottomPanel } from "./panels";
@@ -46,15 +46,17 @@ function TooSmall({ width, height }: { width: number; height: number }) {
   );
 }
 
+/** Canvas between cards. */
+function Gap({ width, visible = true }: { width: number; visible?: boolean }) {
+  return <box width={width} flexShrink={0} visible={visible && width > 0} />;
+}
+
 function MainRow() {
   const app = useApp();
-  const theme = useTheme();
   const layout = useStore(app.layout.effective);
   const left = layout.sidebarSide === "left";
   const drawer = layout.sidebar.drawer || layout.auxiliary.drawer;
-  const activity = layout.activityBar.visible ? (
-    <ActivityBar key="activity" side={layout.sidebarSide} />
-  ) : null;
+  const gap = layout.gap;
   const sidebar = (
     <Sidebar
       key="sidebar"
@@ -64,16 +66,9 @@ function MainRow() {
       resizable={!layout.sidebar.drawer}
     />
   );
+  // The editor column holds two cards; their lips leave half a row of canvas between them.
   const editorColumn = (
-    <box
-      key="editor"
-      visible={!drawer}
-      flexGrow={1}
-      flexShrink={1}
-      minWidth={0}
-      flexDirection="column"
-      backgroundColor={theme.colors.bg.base}
-    >
+    <box key="editor" visible={!drawer} flexGrow={1} flexShrink={1} minWidth={0} flexDirection="column">
       <EditorArea visible={layout.editor.visible} />
       <BottomPanel
         visible={layout.bottom.visible}
@@ -91,9 +86,19 @@ function MainRow() {
       resizable={!layout.auxiliary.drawer}
     />
   );
-  const children: ReactNode[] = left
-    ? [activity, sidebar, editorColumn, auxiliary]
-    : [auxiliary, editorColumn, sidebar, activity];
+  const first = left ? sidebar : auxiliary;
+  const last = left ? auxiliary : sidebar;
+  const firstShown = left ? layout.sidebar.visible : layout.auxiliary.visible;
+  const lastShown = left ? layout.auxiliary.visible : layout.sidebar.visible;
+  const children: ReactNode[] = [
+    <Gap key="gap-start" width={gap} />,
+    first,
+    <Gap key="gap-first" width={gap} visible={firstShown && !drawer} />,
+    editorColumn,
+    <Gap key="gap-last" width={gap} visible={lastShown && !drawer} />,
+    last,
+    <Gap key="gap-end" width={gap} />,
+  ];
   return (
     <box flexGrow={1} flexShrink={1} minHeight={0} flexDirection="row">
       {children}
@@ -106,7 +111,7 @@ function WorkbenchFrame() {
   const theme = useTheme();
   const layout = useStore(app.layout.effective);
   return (
-    <box width="100%" height="100%" flexDirection="column" backgroundColor={theme.colors.bg.base}>
+    <box width="100%" height="100%" flexDirection="column" backgroundColor={theme.shell.canvas}>
       <CommandBar visible={layout.commandBar} compact={layout.compactCommandBar} />
       <MainRow />
       <StatusBar visible={layout.statusBar} />

@@ -1,0 +1,180 @@
+/**
+ * Kanagawa Wave. Palette values from the published Kanagawa color scheme (MIT, see
+ * README.md), using its named colors (sumiInk, fujiWhite, crystalBlue, ...); the mapping to
+ * Lucy's tokens is our own, close to Kanagawa's own highlight groups.
+ *
+ * Character: ink-and-paper warmth. Crystal blue accent and functions, violet keywords,
+ * carp-yellow properties, surimi-orange constants, sakura numbers, the ronin-yellow cursor
+ * line number, and Kanagawa's own muted "winter" tints for diff lines.
+ *
+ * Adjustments:
+ * - `fujiGray` (#727169, 3.3:1) is Kanagawa's comment color and just below our 3.5:1 floor
+ *   for comments and hints, so those uses are lightened just enough (`commentText`,
+ *   #75756d). Ignored files and ANSI 8 keep the palette value (3:1 and 2:1 floors).
+ * - `sumiInk6` (#54546d, 2.2:1) is Kanagawa's line-number color and below our 2.5:1 floor,
+ *   so inactive line numbers use it lightened just enough (`lineNumber`, #5c5c73).
+ * - The removed-word tint is kept at 20 % so peachRed still reads at 4.5:1 on it.
+ */
+import { blend, ensureContrast } from "./color";
+import { defineTheme } from "./theme";
+
+const p = {
+  sumiInk0: "#16161d",
+  sumiInk1: "#181820",
+  sumiInk2: "#1a1a22",
+  sumiInk3: "#1f1f28",
+  sumiInk4: "#2a2a37",
+  sumiInk5: "#363646",
+  sumiInk6: "#54546d",
+  waveBlue1: "#223249",
+  waveBlue2: "#2d4f67",
+  winterGreen: "#2b3328",
+  winterYellow: "#49443c",
+  winterRed: "#43242b",
+  winterBlue: "#252535",
+  autumnGreen: "#76946a",
+  autumnRed: "#c34043",
+  autumnYellow: "#dca561",
+  samuraiRed: "#e82424",
+  roninYellow: "#ff9e3b",
+  waveAqua1: "#6a9589",
+  dragonBlue: "#658594",
+  fujiWhite: "#dcd7ba",
+  oldWhite: "#c8c093",
+  fujiGray: "#727169",
+  oniViolet: "#957fb8",
+  oniViolet2: "#b8b4d0",
+  crystalBlue: "#7e9cd8",
+  springViolet1: "#938aa9",
+  springViolet2: "#9cabca",
+  springBlue: "#7fb4ca",
+  waveAqua2: "#7aa89f",
+  springGreen: "#98bb6c",
+  boatYellow2: "#c0a36e",
+  carpYellow: "#e6c384",
+  sakuraPink: "#d27e99",
+  waveRed: "#e46876",
+  peachRed: "#ff5d62",
+  surimiOrange: "#ffa066",
+} as const;
+
+const commentText = ensureContrast(p.fujiGray, p.sumiInk3, 3.5);
+const lineNumber = ensureContrast(p.sumiInk6, p.sumiInk3, 2.5);
+
+export const kanagawaWave = defineTheme({
+  id: "kanagawa-wave",
+  name: "Kanagawa Wave",
+  appearance: "dark",
+  contrastLevel: "AA",
+  accents: {
+    blue: p.crystalBlue,
+    purple: p.oniViolet,
+    green: p.springGreen,
+    yellow: p.carpYellow,
+    orange: p.surimiOrange,
+    red: p.waveRed,
+    teal: p.waveAqua2,
+  },
+  defaultAccent: "blue",
+  build: (accent) => ({
+    bg: {
+      canvas: p.sumiInk0,
+      base: p.sumiInk3,
+      surface: p.sumiInk1,
+      raised: p.sumiInk4,
+      overlay: blend(p.sumiInk4, p.sumiInk3, 0.5),
+      inset: p.sumiInk0,
+    },
+    fg: {
+      default: p.fujiWhite,
+      muted: p.oldWhite,
+      subtle: commentText,
+      onAccent: p.sumiInk0,
+      disabled: p.sumiInk6,
+    },
+    border: { subtle: p.sumiInk4, default: p.sumiInk5, focus: accent },
+    accent: { primary: accent, secondary: p.oniViolet },
+    state: {
+      hover: blend(p.sumiInk4, p.sumiInk2, 0.6),
+      active: p.sumiInk5,
+      selectedBg: blend(accent, p.sumiInk3, 0.24),
+      selectedFg: p.fujiWhite,
+      selectedInactiveBg: p.sumiInk4,
+      focusRing: accent,
+    },
+    status: { success: p.springGreen, warning: p.roninYellow, error: p.samuraiRed, info: p.dragonBlue },
+    git: {
+      added: p.autumnGreen,
+      modified: p.autumnYellow,
+      deleted: p.autumnRed,
+      renamed: p.springBlue,
+      untracked: p.waveAqua1,
+      conflicted: p.surimiOrange,
+      ignored: p.fujiGray,
+    },
+    diff: {
+      addedLineBg: p.winterGreen,
+      removedLineBg: p.winterRed,
+      addedWordBg: blend(p.autumnGreen, p.sumiInk3, 0.3),
+      removedWordBg: blend(p.autumnRed, p.sumiInk3, 0.2),
+      addedFg: p.springGreen,
+      removedFg: p.peachRed,
+      hunkHeaderBg: p.winterBlue,
+      hunkHeaderFg: p.springBlue,
+      contextFg: p.oldWhite,
+    },
+    syntax: {
+      keyword: p.oniViolet,
+      string: p.springGreen,
+      number: p.sakuraPink,
+      comment: commentText,
+      function: p.crystalBlue,
+      type: p.waveAqua2,
+      variable: p.fujiWhite,
+      parameter: p.oniViolet2,
+      constant: p.surimiOrange,
+      property: p.carpYellow,
+      operator: p.boatYellow2,
+      punctuation: p.springViolet2,
+      tag: p.waveRed,
+      attribute: p.carpYellow,
+      heading: p.springBlue,
+      link: p.springBlue,
+      regexp: p.boatYellow2,
+    },
+    editor: {
+      bg: p.sumiInk3,
+      lineNumber,
+      lineNumberActive: p.roninYellow,
+      activeLineBg: p.sumiInk4,
+      selectionBg: blend(accent, p.sumiInk3, 0.26),
+      findMatchBg: p.winterYellow,
+      findMatchActiveBg: blend(p.surimiOrange, p.sumiInk3, 0.32),
+      indentGuide: p.sumiInk4,
+    },
+    badge: { bg: accent, fg: p.sumiInk0 },
+    scrollbar: { track: p.sumiInk2, thumb: p.sumiInk6 },
+    terminal: {
+      fg: p.fujiWhite,
+      bg: p.sumiInk3,
+      cursor: p.oldWhite,
+      selectionBg: p.waveBlue2,
+      black: p.sumiInk0,
+      red: p.autumnRed,
+      green: p.autumnGreen,
+      yellow: p.boatYellow2,
+      blue: p.crystalBlue,
+      magenta: p.oniViolet,
+      cyan: p.waveAqua1,
+      white: p.oldWhite,
+      brightBlack: p.fujiGray,
+      brightRed: p.samuraiRed,
+      brightGreen: p.springGreen,
+      brightYellow: p.carpYellow,
+      brightBlue: p.springBlue,
+      brightMagenta: p.springViolet1,
+      brightCyan: p.waveAqua2,
+      brightWhite: p.fujiWhite,
+    },
+  }),
+});

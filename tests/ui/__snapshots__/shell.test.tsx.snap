@@ -1,30 +1,28 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`shell text snapshots 120x35 1`] = `
-" atlas                                 ⌕ Search files and commands           Ctrl+P                            ◧  ⬓  ◨  
-▎ ⧉  EXPLORER         +  ⌕  ⊟  ⋯                                                                                        
-     ▸ ◫ src                    ◉                                                                                       
-  ⌕    ◦ package.json                                                                                                   
-       ◦ README.md              M                                                                                       
-  ⑂                                                                                                                     
-  2                                                                                                                     
-  ✦                                                                                                                     
+"  atlas                               ▐⌕ Search files and commands           Ctrl+P▌                    ◧  ⬓  ◨   ⊞  ❖  
+ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ 
+   ⧉  ⌕ ▐⑂ Changes▌ ✦    ✓  ⋯                                                      Claude Code                    +  ✕  
                                                                                                                         
-  ⊞                                                                                                                     
-                                                        lucy                                                            
-                                                        atlas                                                           
-                                                        <workspace>                      
+   Message (Ctrl+K C to                                                                                                 
+   commit on main)                                                                 No coding agent is configured        
                                                                                                                         
+                                                                                   Lucy has no AI provider to start     
+  ▐ Commit ▌ ▐ Amend ▌                                                             in this panel.                       
                                                                                                                         
-                                                        Open a file                         Ctrl+P                      
-                                                        Show all commands                       F1                      
-                                                        Search in files                   Ctrl+K F                      
-                                                        Source control                    Ctrl+K G                      
-                                                        Ask Claude                          Ctrl+L                      
-                                                        Open a terminal                   Ctrl+K T                      
+   ▾ CHANGES  1                     lucy                                           Open Settings  ▐Ctrl+K ,▌            
+     ◦ README.md            M       The workspace around your coding agents                                             
+   ▾ UNTRACKED  1                                                                                                       
+     ◦ new.ts src           U       atlas                                                                               
+                                    <workspace>                                            
                                                                                                                         
                                                                                                                         
-                                                                                                                        
+                                    Start Claude Code             ▐Ctrl+K N▌                                            
+                                    Review changes  2 changes     ▐Ctrl+K G▌                                            
+                                    Open a file                     ▐Ctrl+P▌                                            
+                                    Search                        ▐Ctrl+K F▌                                            
+                                    All commands                        ▐F1▌                                            
                                                                                                                         
                                                                                                                         
                                                                                                                         
@@ -33,68 +31,70 @@ exports[`shell text snapshots 120x35 1`] = `
                                                                                                                         
                                                                                                                         
                                                                                                                         
-  ❖                                                                                                                     
                                                                                                                         
- ⎇ main  ⇡2  ◉ 2                                                                                       Catppuccin Mocha 
+                                                                                                                        
+                                                                                                                        
+ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ 
+  ⎇ main  ⇡2  ◉ 2                                                                                     Catppuccin Mocha  
 "
 `;
 
 exports[`shell text snapshots 90x28 1`] = `
-" atlas                  ⌕ Search files and commands           Ctrl+P             ◧  ⬓  ◨  
-▎ ⧉  EXPLORER         +  ⌕  ⊟  ⋯                                                          
-     ▸ ◫ src                    ◉                                                         
-  ⌕    ◦ package.json                                                                     
-       ◦ README.md              M                                                         
-  ⑂                                                                                       
-  2                                                                                       
-  ✦                                      lucy                                             
-                                         atlas                                            
-  ⊞                                      <workspace>       
+"  atlas                ▐⌕ Search files and commands           Ctrl+P▌     ◧  ⬓  ◨   ⊞  ❖  
+ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ 
+   ⧉  ⌕ ▐⑂ Changes▌ ✦    ✓  ⋯                                                             
                                                                                           
+   Message (Ctrl+K C to                                                                   
+   commit on main)                                                                        
                                                                                           
-                                         Open a file                         Ctrl+P       
-                                         Show all commands                       F1       
-                                         Search in files                   Ctrl+K F       
-                                         Source control                    Ctrl+K G       
-                                         Ask Claude                          Ctrl+L       
-                                         Open a terminal                   Ctrl+K T       
+                                       lucy                                               
+  ▐ Commit ▌ ▐ Amend ▌                 The workspace around your coding agents            
                                                                                           
-                                                                                          
-                                                                                          
-                                                                                          
+   ▾ CHANGES  1                        atlas                                              
+     ◦ README.md            M          <workspace>       
+   ▾ UNTRACKED  1                                                                         
+     ◦ new.ts src           U                                                             
+                                       Start Claude Code                 ▐Ctrl+K N▌       
+                                       Review changes  2 changes         ▐Ctrl+K G▌       
+                                       Open a file                         ▐Ctrl+P▌       
+                                       Search                            ▐Ctrl+K F▌       
+                                       All commands                            ▐F1▌       
                                                                                           
                                                                                           
                                                                                           
-  ❖                                                                                       
                                                                                           
- ⎇ main  ⇡2  ◉ 2                                                         Catppuccin Mocha 
+                                                                                          
+                                                                                          
+                                                                                          
+ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ 
+  ⎇ main  ⇡2  ◉ 2                                                       Catppuccin Mocha  
 "
 `;
 
 exports[`shell text snapshots 70x24 1`] = `
-" atlas                                                    ⌕  ◧  ⬓  ◨  
-  ⧉                                                                   
-                                                                      
-  ⌕                                                                   
-                                                                      
-  ⑂                                                                   
-  2             lucy                                                  
-  ✦             atlas                                                 
-                <workspace>            
-  ⊞                                                                   
-                                                                      
-                Open a file                         Ctrl+P            
-                Show all commands                       F1            
-                Search in files                   Ctrl+K F            
-                Source control                    Ctrl+K G            
-                Ask Claude                          Ctrl+L            
-                Open a terminal                   Ctrl+K T            
+"  atlas                                            ⌕  ◧  ⬓  ◨   ⊞  ❖  
+ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ 
                                                                       
                                                                       
                                                                       
+             lucy                                                     
+             The workspace around your coding agents                  
                                                                       
-  ❖                                                                   
+             atlas                                                    
+             <workspace>             
                                                                       
- ⎇ main  ⇡2  ◉ 2                                     Catppuccin Mocha 
+                                                                      
+             Start Claude Code                 ▐Ctrl+K N▌             
+             Review changes  2 changes         ▐Ctrl+K G▌             
+             Open a file                         ▐Ctrl+P▌             
+             Search                            ▐Ctrl+K F▌             
+             All commands                            ▐F1▌             
+                                                                      
+                                                                      
+                                                                      
+                                                                      
+                                                                      
+ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ 
+  ⎇ main  ⇡2  ◉ 2                                   Catppuccin Mocha  
 "
 `;

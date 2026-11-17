@@ -8,9 +8,13 @@ describe("createApp", () => {
     const { tui, ctx, app } = await mountApp({
       workspace: { root: stableWorkspace() },
       git: { branch: { name: "trunk" } },
+      markFirstPaint: false,
     });
     // The Source Control stub subscribes to the Git service, which is a plain object until
     // refreshed: no Git process has run, and nothing else exists yet.
+    // The agent panel is open by default: its detection (agent services, `claude --version`)
+    // also waits for the first paint.
+    await tui.settle();
     expect(ctx.services.createdServices.filter((name) => name !== "git")).toEqual([]);
     expect(ctx.services.git.state.lastUpdated).toBeNull();
     expect(ctx.services.git.state.loading).toBe(false);

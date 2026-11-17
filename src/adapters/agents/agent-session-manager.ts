@@ -20,7 +20,7 @@ import { LucyError } from "@/core/errors";
 import type { Disposable } from "@/core/events";
 import { Store } from "@/core/store";
 import { sanitizeForDisplay, truncateEnd } from "@/core/text";
-import type { AgentLaunchMode, AgentLaunchWarning, AgentProvider } from "./agent-provider";
+import type { AgentLaunch, AgentLaunchMode, AgentLaunchWarning, AgentProvider } from "./agent-provider";
 
 export type AgentActivity = "working" | "idle" | "attention" | "exited";
 
@@ -74,6 +74,17 @@ export interface CreateAgentSessionInput {
    * once a screen is attached, so the program's first terminal queries are answered live.
    */
   autoStart?: boolean;
+  /** Restore and persistence: a stable id (the tmux session name), instead of a random one. */
+  id?: string;
+  /** Use this launch instead of asking the provider (already built, warnings already shown). */
+  launch?: AgentLaunch;
+  /** How this session's PTY starts (a tmux attach); defaults to the manager's spawner. */
+  spawn?: PtySpawner;
+  createdAt?: number;
+  /** Restored as ended; Restart runs the launch (for example `claude --continue`). */
+  ended?: TerminalSessionOptions["ended"];
+  /** Runs in Lucy's background tmux server and survives quitting. */
+  persistent?: boolean;
 }
 
 /** Pure activity derivation from a terminal's state. */
@@ -156,7 +167,11 @@ export class AgentSessionManager implements Disposable {
     if (this.disposed) throw new LucyError("CANCELLED", "The agent session manager was disposed");
     const provider = this.providers.get(input.providerId);
     if (!provider) throw new LucyError("NOT_FOUND", `Unknown agent provider "${input.providerId}"`);
-    const launch = provider.buildLaunch(input.mode, { cwd: input.cwd, extraArgs: input.extraArgs });
+    if (input.id !== undefined && this.get(input.id)) {
+      throw new LucyError("ALREADY_EXISTS", "An agent session with this id already exists");
+    }
+    const launch =
+      input.launch ?? provider.buildLaunch(input.mode, { cwd: input.cwd, extraArgs: input.extraArgs });
     const terminalOptions: TerminalSessionOptions = {
       ...this.options.terminalDefaults,
       argv: launch.argv,
@@ -164,17 +179,19 @@ export class AgentSessionManager implements Disposable {
       env: launch.env,
       cols: input.cols,
       rows: input.rows,
-      spawn: this.options.spawn,
+      spawn: input.spawn ?? this.options.spawn,
       autoStart: input.autoStart ?? this.options.terminalDefaults?.autoStart,
+      ended: input.ended,
+      persistent: input.persistent,
     };
     const terminal = this.options.createTerminal?.(terminalOptions) ?? new TerminalSession(terminalOptions);
     const session: AgentSession = {
-      id: randomUUID(),
+      id: input.id ?? randomUUID(),
       providerId: provider.id,
       mode: input.mode,
       title: cleanTitle(input.title) || defaultTitle(provider, input.mode),
       cwd: launch.cwd,
-      createdAt: this.now(),
+      createdAt: input.createdAt ?? this.now(),
       terminal,
       activity: deriveAgentActivity(terminal.state.get(), this.now(), this.options),
       warnings: launch.warnings,

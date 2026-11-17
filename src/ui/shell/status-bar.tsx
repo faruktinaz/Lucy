@@ -111,7 +111,6 @@ function HintArea({ width }: { width: number }) {
 
 export function StatusBar({ visible }: { visible: boolean }) {
   const app = useApp();
-  const theme = useTheme();
   const items = useStore(app.statusBar.store);
   const hints = useStore(app.hints.store);
   const { size, onSizeChange } = useMeasure();
@@ -129,7 +128,7 @@ export function StatusBar({ visible }: { visible: boolean }) {
       height={1}
       flexShrink={0}
       flexDirection="row"
-      backgroundColor={theme.colors.bg.surface}
+      paddingX={1}
       onSizeChange={onSizeChange}
     >
       {left.map((item) => (

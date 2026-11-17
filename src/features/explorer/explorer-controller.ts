@@ -6,12 +6,16 @@
  * read in `load()`, after the first paint, and the `FileOps` / `FileIndex` domain services
  * are only created by the first operation that needs them.
  */
+
 import { join } from "node:path";
 import { FileTree } from "@/adapters/filesystem";
+import type { GitDecoration } from "@/adapters/git";
 import type { AppContext } from "@/app/app-context";
+import { copiedLabel } from "@/app/clipboard";
 import { TRASH_LIMITS } from "@/app/domain/domain-services";
 import type { MenuItem } from "@/app/workbench/menus";
 import { type Disposable, DisposableStore, toDisposable } from "@/core/events";
+import { toRelativePosix } from "@/core/paths";
 import { Store } from "@/core/store";
 import { sanitizeForDisplay, truncateMiddle } from "@/core/text";
 import { type ExplorerFileOps, type ExplorerNotice, ExplorerViewModel } from "./model";
@@ -93,7 +97,7 @@ export class ExplorerController implements Disposable {
       tree: this.tree,
       fileOps,
       iconTier: ctx.themes.store.get().icons,
-      decorations: (path) => services.git.decorationFor(path),
+      decorations: (path) => this.decorationFor(path),
       onOpen: (intent) => this.openFile(intent.path, intent.preview),
     });
     this.disposables.add(this.model);
@@ -128,11 +132,59 @@ export class ExplorerController implements Disposable {
     this.ui.update({ loaded: true });
     if (this.disposables.isDisposed) return;
     this.disposables.add(ctx.services.onDidChangeFiles((batch) => void this.model.handleWatchBatch(batch)));
-    this.disposables.add(
-      toDisposable(ctx.services.git.store.subscribe(() => this.model.invalidateDecorations())),
-    );
+    this.disposables.add(this.followRepositories());
     this.disposables.add(toDisposable(ctx.editors.store.subscribe(() => this.followActiveEditor())));
     this.followActiveEditor();
+  }
+
+  /**
+   * Git decoration of a workspace-relative path from the deepest repository containing it, so
+   * files inside nested repositories show their own letters. Reads the repository manager only
+   * once it exists (it is created after the first paint); never creates it.
+   */
+  private decorationFor(path: string): GitDecoration | undefined {
+    const services = this.ctx.services;
+    if (services.createdServices.includes("gitRepositories")) {
+      const absolute = join(this.ctx.workspace.root, ...path.split("/"));
+      const entry = services.gitRepositories.entryForPath(absolute);
+      if (entry && !entry.primary) return entry.service.decorationFor(toRelativePosix(entry.root, absolute));
+    }
+    return services.git.decorationFor(path);
+  }
+
+  /** Re-reads decorations when any repository's status changes (re-attached as repositories come and go). */
+  private followRepositories(): Disposable {
+    const services = this.ctx.services;
+    const invalidate = () => this.model.invalidateDecorations();
+    let current = new DisposableStore();
+    const attach = () => {
+      current.dispose();
+      current = new DisposableStore();
+      const managed = services.createdServices.includes("gitRepositories");
+      current.add(
+        toDisposable(
+          services.git.store.subscribe(() => {
+            if (!managed && services.createdServices.includes("gitRepositories")) attach();
+            invalidate();
+          }),
+        ),
+      );
+      if (!managed) return;
+      const manager = services.gitRepositories;
+      current.add(
+        toDisposable(
+          manager.store.subscribe(() => {
+            attach();
+            invalidate();
+          }),
+        ),
+      );
+      for (const entry of manager.entries) {
+        if (!entry.primary) current.add(toDisposable(entry.service.store.subscribe(invalidate)));
+      }
+    };
+    attach();
+    return toDisposable(() => current.dispose());
   }
 
   /** The view registers what only it knows; returns the registration. */
@@ -333,8 +385,8 @@ export class ExplorerController implements Disposable {
     }
   }
 
-  /** Copies the explorer selection (or, from elsewhere, the active file) through OSC 52. */
-  copyPath(relative: boolean): void {
+  /** Copies the explorer selection (or, from elsewhere, the active file) to the clipboard. */
+  async copyPath(relative: boolean): Promise<void> {
     const focused = this.ctx.focus.current === "sidebar";
     const path = (focused ? this.selectedPath() : (this.activeFilePath() ?? this.selectedPath())) ?? null;
     if (path === null) {
@@ -342,20 +394,15 @@ export class ExplorerController implements Disposable {
       return;
     }
     const text = relative ? path : join(this.ctx.workspace.root, ...path.split("/"));
-    let copied = false;
-    try {
-      copied = this.bridge?.copy(text) ?? false;
-    } catch {
-      copied = false;
-    }
-    if (copied) {
-      this.ctx.hints.flash({ text: `Copied ${relative ? "relative path" : "path"}` });
+    const result = await this.ctx.clipboard.copy(text);
+    if (result.ok) {
+      this.ctx.hints.flash({ text: copiedLabel(result, `Copied ${relative ? "relative path" : "path"}`) });
       return;
     }
     this.ctx.notifications.show({
       severity: "warning",
-      title: "This terminal did not accept the copy",
-      message: `Copying needs OSC 52 clipboard support. The path is ${sanitizeForDisplay(text)}`,
+      title: "Could not copy",
+      message: `${result.reason}. The path is ${sanitizeForDisplay(text)}`,
       key: "explorer.copy",
     });
   }

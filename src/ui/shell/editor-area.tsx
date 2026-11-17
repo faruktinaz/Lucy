@@ -55,12 +55,12 @@ function TabStrip({ tabs, activeId }: { tabs: readonly EditorTab[]; activeId: st
     };
   });
   return (
-    <box height={1} flexShrink={0} backgroundColor={theme.colors.bg.surface} onSizeChange={onSizeChange}>
+    <box height={1} flexShrink={0} paddingX={1} onSizeChange={onSizeChange}>
       <Tabs
         items={items}
         activeId={activeId}
-        width={size.width}
-        surface={theme.colors.bg.surface}
+        width={Math.max(0, size.width - 2)}
+        surface={theme.shell.editor}
         focused={focused}
         onSelect={(id) => app.editors.activate(id)}
         onClose={(id) => app.editors.close(id)}
@@ -167,7 +167,6 @@ function Breadcrumb({ tab }: { tab: EditorTab }) {
       flexDirection="row"
       paddingLeft={2}
       paddingRight={1}
-      backgroundColor={c.bg.base}
       onSizeChange={onSizeChange}
     >
       <text flexGrow={1} flexShrink={1} fg={c.fg.subtle} selectable={false} wrapMode="none">
@@ -209,13 +208,13 @@ export function EditorArea({ visible }: { visible: boolean }) {
   const { size, onSizeChange } = useMeasure();
   const active = tabs.find((tab) => tab.id === activeId);
   return (
-    <ZoneBox zone="editor" visible={visible} flexGrow={1} backgroundColor={theme.colors.bg.base}>
+    <ZoneBox zone="editor" visible={visible} flexGrow={1} backgroundColor={theme.shell.editor}>
       <box flexGrow={1} flexDirection="column" minHeight={0} onSizeChange={onSizeChange}>
         {active ? (
           <>
             <TabStrip tabs={tabs} activeId={activeId} />
             <Breadcrumb tab={active} />
-            <box flexGrow={1} flexDirection="column" minHeight={0} backgroundColor={theme.colors.bg.base}>
+            <box flexGrow={1} flexDirection="column" minHeight={0}>
               <EditorContent tab={active} />
             </box>
           </>

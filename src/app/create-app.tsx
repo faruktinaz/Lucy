@@ -33,6 +33,7 @@ import { ComponentGallery } from "../ui/gallery/component-gallery";
 import { Workbench } from "../ui/shell/workbench";
 import { ThemeService } from "../ui/theme/ui-theme";
 import type { AppContext, AppEnvironment, Lifecycle, StartupTimings } from "./app-context";
+import { type ClipboardBackend, ClipboardService, SelectionCopy, SystemClipboardBackend } from "./clipboard";
 import { registerQuickPickProviders } from "./commands/quick-pick-providers";
 import { registerWorkbenchCommands } from "./commands/workbench-commands";
 import { type DomainServiceOverrides, DomainServices } from "./domain/domain-services";
@@ -47,6 +48,7 @@ import { FocusService, type FocusZone } from "./workbench/focus";
 import { HintService } from "./workbench/hints";
 import { LayoutService } from "./workbench/layout";
 import type { LayoutDefaults } from "./workbench/layout-compute";
+import { applyReviewFirstLayout } from "./workbench/layout-defaults";
 import { MenuService } from "./workbench/menus";
 import { NotificationService } from "./workbench/notifications";
 import { OverlayService } from "./workbench/overlays";
@@ -81,6 +83,8 @@ export interface CreateAppOptions {
   /** Startup phase recorder shared with `main.ts`. */
   timings?: { mark(phase: string): void; marks(): StartupTimings["marks"] };
   log?: Logger;
+  /** Where copies go. Default: the platform tool, else OSC 52 (tests pass a memory backend). */
+  clipboard?: ClipboardBackend;
 }
 
 export interface CreatedApp {
@@ -297,6 +301,11 @@ export async function createApp(options: CreateAppOptions): Promise<CreatedApp> 
     resumeTerminal: () => renderer.resume(),
   };
 
+  const clipboard = new ClipboardService(
+    options.clipboard ??
+      new SystemClipboardBackend({ osc52: () => (renderer.isDestroyed ? null : renderer) }),
+  );
+
   const context: AppContext = {
     workspace,
     dirs: options.dirs,
@@ -320,6 +329,7 @@ export async function createApp(options: CreateAppOptions): Promise<CreatedApp> 
     menus,
     overlays,
     hints,
+    clipboard,
     services,
     lifecycle,
     run: async (command, args) => {
@@ -414,6 +424,35 @@ export async function createApp(options: CreateAppOptions): Promise<CreatedApp> 
   applyBackground();
   disposables.add(themes.onDidChange(applyBackground));
 
+  // Mouse selections reach the clipboard only through Lucy (see src/app/clipboard).
+  const selectionCopy = disposables.add(
+    new SelectionCopy({
+      renderer,
+      clipboard,
+      copyOnSelect: () => config.get("ui.copyOnSelect"),
+      flash: (text) => hints.flash({ text, tone: "muted" }),
+      report: (reason) =>
+        notifications.show({
+          key: "clipboard",
+          severity: "warning",
+          title: "Could not copy",
+          message: reason,
+        }),
+    }),
+  );
+  disposables.add(
+    commands.register({
+      id: "clipboard.copySelection",
+      title: "Copy Selection",
+      category: "Edit",
+      keywords: ["clipboard", "copy", "selection"],
+      run: () => {
+        if (!selectionCopy.copySelection())
+          hints.flash({ text: "Select text with the mouse first", tone: "muted" });
+      },
+    }),
+  );
+
   const router = disposables
     .add(
       new KeyRouter({
@@ -427,6 +466,7 @@ export async function createApp(options: CreateAppOptions): Promise<CreatedApp> 
         log: log.child("keys"),
         onSuspend: () => void lifecycle.suspend(),
         quitLabel: () => keybindingLabel("app.quit"),
+        copySelection: () => selectionCopy.copySelection(),
         describePending: (prefix: Chord) => {
           const label = formatChord(prefix, "text");
           if (chordToString(prefix) === chordToString(parseKeySequence(LEADER_KEY)[0] as Chord)) {
@@ -506,11 +546,13 @@ export async function createApp(options: CreateAppOptions): Promise<CreatedApp> 
 
   // ----------------------------------------------------------------- restore
   const restoreEnabled = (options.restore ?? true) && config.get("workspace.restore");
+  let restoredLayout = false;
   if (restoreEnabled) {
     try {
       const loaded = await workspaceState.load();
       persisted.load(loaded.state);
-      layout.restore(loaded.state.layout);
+      restoredLayout = loaded.source === "file";
+      if (restoredLayout) layout.restore(loaded.state.layout);
       editors.restore(loaded.state.openFiles, loaded.state.activeFile);
       commands.setRecent(loaded.state.commandMru);
       if (loaded.source === "recovered" && loaded.message) {
@@ -520,6 +562,15 @@ export async function createApp(options: CreateAppOptions): Promise<CreatedApp> 
       log.warn("Restoring workspace state failed", { error });
       notifications.warn("Could not restore the last session", errorMessage(error));
     }
+  }
+  if (!restoredLayout) {
+    disposables.add(
+      applyReviewFirstLayout({
+        layout,
+        hasAuxiliaryView: () => views.state.auxiliary.length > 0,
+        git: config.get("git.enabled") ? services.git.store : null,
+      }),
+    );
   }
   if (resolved?.openFile) {
     editors.open({ kind: "file", resource: resolved.openFile });

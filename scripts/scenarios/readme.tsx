@@ -4,15 +4,20 @@
  *
  *   bun run screenshots --only readme-hero,readme-source-control,readme-editor,readme-search,readme-ai-panel,readme-settings
  */
-import { defineScenario, until } from "../screenshots";
+import { defineScenario, type ScenarioContext, until } from "../screenshots";
 import { agentMount } from "./ai";
-import { findScenario } from "./editor";
+import { editedScenario } from "./editor";
 import { prepare } from "./explorer";
 import { search } from "./search";
-import { openDiff, showSourceControl } from "./source-control";
+import { multiRepoDemo } from "./source-control";
 
 const THEMES = ["catppuccin-mocha"] as const;
 const WIDE = [{ cols: 120, rows: 35 }];
+
+/** The editor, search and settings images show their view without the agent panel. */
+async function withoutAgentPanel(app: ScenarioContext): Promise<void> {
+  await app.tui.act(() => app.ctx.layout.setAuxiliaryVisible(false));
+}
 
 defineScenario(
   "readme-hero",
@@ -23,7 +28,7 @@ defineScenario(
     await app.tui.act(() => app.ctx.focus.focus("editor"));
   },
   {
-    description: "README hero: explorer, a highlighted file and a Claude Code session",
+    description: "README hero: Files, a highlighted file and a Claude Code session",
     themes: THEMES,
     sizes: [{ cols: 150, rows: 42 }],
     mount: agentMount(),
@@ -34,29 +39,43 @@ defineScenario(
 defineScenario(
   "readme-source-control",
   async (app) => {
-    await showSourceControl(app);
-    await openDiff(app, "src/server/routes/tasks.ts");
-    await app.tui.act(() => app.ctx.focus.focus("editor"));
-    await app.tui.press("f7");
+    await withoutAgentPanel(app);
+    await app.tui.act(() => app.ctx.commands.execute("view.showSourceControl"));
+    await until(app, () => app.tui.frame().includes("terraform"), 8000);
+    await app.tui.act(() => app.ctx.focus.focus("sidebar"));
+    // A modified file: its diff shows a removed and two added lines.
+    await app.tui.clickText("server.ts");
+    await until(app, () => app.tui.frame().includes("9090"), 8000);
   },
   {
-    description: "README: Source Control with a unified diff",
+    description: "README: Source Control over a folder with three repositories, with a diff",
     themes: THEMES,
     sizes: WIDE,
+    mount: { demoWorkspace: multiRepoDemo, settings: { "git.repositoryScanDepth": 3 } },
     readmeImage: "source-control",
   },
 );
 
-defineScenario("readme-editor", findScenario, {
-  description: "README: the code viewer with the find bar",
-  themes: THEMES,
-  sizes: WIDE,
-  readmeImage: "editor",
-});
+defineScenario(
+  "readme-editor",
+  async (app) => {
+    await withoutAgentPanel(app);
+    await editedScenario(app);
+  },
+  {
+    description: "README: a file edited in place, not yet saved",
+    themes: THEMES,
+    sizes: WIDE,
+    // Auto save is off so the unsaved state stays on screen.
+    mount: { settings: { "editor.autosave": "off" } },
+    readmeImage: "editor",
+  },
+);
 
 defineScenario(
   "readme-search",
   async (app) => {
+    await withoutAgentPanel(app);
     await search(app, "TaskStore");
     for (let i = 0; i < 4; i++) await app.tui.press("down");
     await app.tui.press("enter");
@@ -92,6 +111,7 @@ defineScenario(
 defineScenario(
   "readme-settings",
   async (app) => {
+    await withoutAgentPanel(app);
     await app.tui.act(async () => {
       await app.ctx.config.set("ui.animations", false, { persist: false });
       await app.ctx.config.set("editor.wrap", true, { persist: false });

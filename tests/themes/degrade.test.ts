@@ -70,6 +70,18 @@ describe("resolveTheme", () => {
       expect(ix["git.added"]).not.toBe(ix["git.modified"]);
     }
   });
+
+  test("16 colors put a dark theme's canvas on the terminal background, even a mid-dark one", () => {
+    // Nord and Everforest have bases light enough that matching by lightness alone would
+    // pick ANSI 8, a mid grey in most terminals.
+    for (const theme of listThemes().filter((t) => t.appearance === "dark")) {
+      const ix = resolveTheme(theme, "16").indexes;
+      for (const path of ["bg.canvas", "bg.base", "bg.surface", "bg.inset", "editor.bg"] as const) {
+        expect(`${theme.id} ${path}=${ix[path]}`).toBe(`${theme.id} ${path}=0`);
+      }
+      expect([7, 15]).toContain(ix["terminal.fg"] ?? -1);
+    }
+  });
 });
 
 describe("detectColorMode", () => {

@@ -61,7 +61,7 @@ describe("error containment", () => {
     });
     const frame = tui.frame();
     expect(frame).toContain("The failing feature failed to start");
-    expect(frame).toContain("EXPLORER");
+    expect(frame).toContain("Files");
   });
 });
 
@@ -86,7 +86,7 @@ describe("workspace restore", () => {
     expect(ctx.layout.state.bottom.visible).toBe(true);
     expect(ctx.layout.state.sidebar.width).toBe(36);
     expect(ctx.layout.state.sidebar.view).toBe("scm");
-    expect(second.tui.frame()).toContain("SOURCE CONTROL");
+    expect(second.tui.frame()).toContain("Changes");
   });
 
   test("--no-restore and workspace.restore = false start fresh", async () => {

@@ -11,11 +11,11 @@ missing is stated) or **not started**.
 | Scaffold and CLI | Done | `bin/lucy`, `src/main.ts`, `src/app/cli.ts`: `[path]`, `--demo`, `--conflict`, `--no-restore`, `--debug`, `--help`, `--version`. |
 | Shell layout | Done | Sidebar, editor area, Claude Code panel, bottom panel, status bar, command palette (`src/app/workbench`, `src/ui/shell`). |
 | Explorer | Done | Lazy tree, Git decorations, filter, create / rename / delete with undo through Lucy's trash. |
-| Viewer | Done | Read-only code viewer with Tree-sitter highlighting, find, go to line, wrap, Markdown preview. |
-| Source Control: stage, unstage, commit, diffs | Done | Per-file stage / unstage / discard, commit and amend, unified and split diffs with word-level highlights. |
+| Viewer | Done | Code view with offline highlighting for about 65 file types (Tree-sitter grammars plus built-in tokenizers), find, go to line, wrap, Markdown preview. Editing in place is Phase 3 (done). |
+| Source Control: stage, unstage, commit, diffs | Done | Per-file stage / unstage / discard, commit and amend, unified and split diffs with word-level highlights. Multiple repositories: every repository below the folder (`git.repositoryScanDepth`) is shown separately; commits made inside a nested repository from a terminal refresh it. |
 | Fuzzy file search and content search | Done | Quick Open over a file index (`git ls-files`, ripgrep or a walk); content search with ripgrep, `git grep` or a built-in engine. |
 | Claude Code adapter and in-app panel | Done | Runs the user's `claude` in a PTY (`src/adapters/agents`, `src/features/ai`). Tested only with a fake program, not with the real CLI. |
-| Settings and themes | Done | Settings editor over `config.toml`, four built-in themes, accents, icon tiers, color modes. |
+| Settings and themes | Done | Settings editor over `config.toml`, twelve built-in themes, accents, rounded or square corners (`ui.cornerStyle`), icon tiers, color modes. |
 | Demo mode and tests | Done | `lucy --demo` (throwaway repository, isolated settings); unit, UI and security tests under `tests/`. |
 
 ## Phase 2: hardening and daily use
@@ -31,13 +31,15 @@ missing is stated) or **not started**.
 | Keyboard remap UI | Done | Keyboard Shortcuts editor with chord capture; overrides in `config.toml`. |
 | Git history / branch / stash | Done | Commit history (last 200 commits in a picker), switch and create branch, stash and stash pop, fetch / pull / push. |
 | Command feedback | Done | Notifications with history, status bar items, hints. |
+| Clipboard | Done | Copy on select (`ui.copyOnSelect`), `Ctrl+C` / `Ctrl+Shift+C`, through the platform clipboard tool or OSC 52 over SSH (`src/app/clipboard`). |
+| Session persistence | Done | Terminals and Claude Code sessions in a private tmux server keep running after Lucy quits and are reattached (`terminal.persistence`). |
 
 ## Phase 3: IDE features and distribution
 
 | Item | Status | Notes |
 |---|---|---|
-| LSP | Not started | No language-server code. |
-| Native editable buffer | Not started | Editing goes to the external editor. |
+| LSP | Not started | No language-server code, so no completion, diagnostics or go to definition. |
+| Native editable buffer | Done | Files are edited in place (undo / redo, cut / copy, auto save via `editor.autosave`, an unsaved-changes guard on close and quit, a notice when the file changed on disk under unsaved edits). The external editor is still available (`Ctrl+K O`). |
 | Hunk staging | Not started | The diff parser models hunks, but staging and discarding are per file. |
 | Inline diagnostics | Not started | No diagnostics source; the "Fix diagnostics" prompt template is shown disabled. |
 | AI review workflows | Partial | Prompt templates (explain, review diff, write tests) are pasted into Claude Code for you to send. No review workflow beyond that. |
@@ -60,6 +62,7 @@ missing is stated) or **not started**.
 - **Precise Claude Code status.** "Working" and "needs attention" are guessed from terminal output;
   a permission dialog can show as idle. Claude Code hooks would make it exact.
 - **Per-hunk and per-line staging** in the diff view.
+- **Completion and language servers**, **drag and drop**, **image zoom**.
 - **View state not persisted across restarts.** Restored per folder: layout, open tabs with scroll
   position and cursor, expanded folders, search query and options, commit draft. Not restored, for
   example: a diff tab's unified / split choice and the maximized panel.
@@ -89,12 +92,12 @@ contents as untrusted, like local ones.
 
 ## Integrations deliberately not built
 
-These were considered and left out on purpose. Lucy detects some of these tools on `PATH` and
+These were considered and left out on purpose. (tmux was on this list; Lucy now uses a private
+tmux server for session persistence, see Phase 2, but still does not drive your own tmux.) Lucy detects some of these tools on `PATH` and
 lists them in its tool overview, but does not drive them.
 
 - **lazygit** as an advanced Git mode. Lucy's own Source Control covers the common path; lazygit
   can be run in the embedded terminal.
-- **tmux** for process persistence. Terminals and Claude Code sessions end when Lucy exits.
 - **cmux**, only through its official interfaces, if ever. Today Lucy just runs whatever `claude`
   resolves to on `PATH`, which can be cmux's wrapper.
 - **Atuin, zoxide, fzf** adapters. They work as usual inside the embedded shell (`Ctrl+R` reaches

@@ -35,6 +35,21 @@ export {
 } from "./paths";
 export { createGitStatus, type GitStatusInput, parsePorcelainV2, statusEquals } from "./porcelain";
 export {
+  GitRepositoryManager,
+  type RepositoryEntry,
+  type RepositoryManagerOptions,
+  type RepositoryManagerState,
+  repositoryLabelPath,
+} from "./repository-manager";
+export {
+  DEFAULT_MAX_REPOSITORIES,
+  DEFAULT_MAX_SCANNED_DIRECTORIES,
+  type RepositoryScanOptions,
+  type RepositoryScanResult,
+  SKIPPED_FOLDERS,
+  scanForRepositories,
+} from "./repository-scan";
+export {
   type GitAdapterFactory,
   type GitOperationName,
   GitService,

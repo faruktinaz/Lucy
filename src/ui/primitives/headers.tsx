@@ -1,7 +1,7 @@
 /**
  * Panel and section headers.
  *
- * - `PanelHeader`: the first row of a side panel. Uppercase muted title that turns to the
+ * - `PanelHeader`: the first row of a card. A muted title in its own case that turns to the
  *   accent color while the panel has focus (bold in High Contrast, so focus never relies on
  *   color alone), with icon actions right-aligned.
  * - `SectionHeader`: a collapsible group inside a panel ("STAGED CHANGES 3"). Its actions
@@ -37,10 +37,16 @@ export function PanelHeader({ title, focused, actions = [], detail, surface }: P
   const theme = useTheme();
   const density = useDensity();
   const c = theme.colors;
-  const bg = surface ?? c.bg.surface;
+  const bg = surface;
   const titleColor = focused ? c.accent.primary : c.fg.muted;
   return (
-    <box height={1} flexShrink={0} flexDirection="row" backgroundColor={bg} paddingLeft={density.rowPaddingX}>
+    <box
+      height={1}
+      flexShrink={0}
+      flexDirection="row"
+      backgroundColor={bg}
+      paddingLeft={density.rowPaddingX + 1}
+    >
       <text
         flexGrow={1}
         flexShrink={1}
@@ -49,7 +55,7 @@ export function PanelHeader({ title, focused, actions = [], detail, surface }: P
         selectable={false}
         wrapMode="none"
       >
-        {title.toUpperCase()}
+        {title}
         {detail ? <span fg={c.fg.subtle} attributes={0}>{`  ${detail}`}</span> : null}
       </text>
       {actions.map((action) => (
@@ -113,7 +119,7 @@ export function SectionHeader({
       flexShrink={0}
       flexDirection="row"
       backgroundColor={bg}
-      paddingLeft={density.rowPaddingX}
+      paddingLeft={density.rowPaddingX + 1}
       {...pointer.props}
     >
       <text flexGrow={1} flexShrink={1} selectable={false} wrapMode="none" fg={c.fg.muted}>

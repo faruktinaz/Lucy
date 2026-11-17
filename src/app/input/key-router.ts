@@ -94,6 +94,22 @@ export interface KeyRouterOptions {
   quitLabel: () => string | undefined;
   /** Formats a pending sequence prefix and lists what can follow. */
   describePending?: (prefix: Chord) => string;
+  /**
+   * Copies the current mouse selection to the clipboard; false when nothing is selected.
+   * Called for Ctrl+C outside terminals and inputs, and for Ctrl+Shift+C everywhere.
+   */
+  copySelection?: () => boolean;
+}
+
+/** Ctrl+Shift+C: only terminals with the kitty keyboard protocol can send it distinctly. */
+function isCtrlShiftC(stroke: KeyStroke): boolean {
+  return (
+    stroke.ctrl &&
+    stroke.shift &&
+    !stroke.alt &&
+    !stroke.super &&
+    (normalizeKey(stroke.key) ?? stroke.key).toLowerCase() === "c"
+  );
 }
 
 function isPlainCtrl(stroke: KeyStroke, letter: string): boolean {
@@ -176,6 +192,13 @@ export class KeyRouter implements Disposable {
       }
     }
 
+    // Ctrl+Shift+C copies the mouse selection, also from inside a terminal (where Ctrl+C must
+    // stay the program's interrupt). Without a selection it reaches the focused widget as before.
+    if (isCtrlShiftC(stroke) && this.options.copySelection?.()) {
+      consume();
+      return;
+    }
+
     // Layer 2: keybindings.
     const result = keybindings.resolve(stroke, contextKeys);
     if (result.kind === "pending" || result.kind === "cancelled") {
@@ -201,6 +224,12 @@ export class KeyRouter implements Disposable {
 
     // Reserved terminal conventions, outside terminals only.
     if (!widget.terminal && isPlainCtrl(stroke, "c")) {
+      // With a mouse selection, Ctrl+C copies it (the terminal's own copy key cannot see it,
+      // see src/app/clipboard). A focused input keeps Ctrl+C for its own editing.
+      if (!widget.input && this.options.copySelection?.()) {
+        consume();
+        return;
+      }
       const quit = this.options.quitLabel();
       hints.flash({ text: quit ? `Quit with ${quit}` : "Quit from the command palette", tone: "muted" });
       if (!widget.input) consume();

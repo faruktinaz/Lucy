@@ -88,7 +88,9 @@ export const DEFAULT_KEYBINDINGS: readonly KeybindingDefinition[] = [
   // Editor.
   { command: "editor.find", keys: ["ctrl+f"], when: editorFocus },
   { command: "editor.goToLine", keys: ["ctrl+g"], when: editorFocus },
-  { command: "editor.closeTab", keys: ["ctrl+w"], when: `!${inputFocus}` },
+  // Ctrl+W closes the tab also from the edit surface (a text input), as in VS Code; the edit
+  // buffer deletes words with Alt+Backspace / Ctrl+Backspace. Other inputs keep Ctrl+W.
+  { command: "editor.closeTab", keys: ["ctrl+w"], when: `!${inputFocus} || ${editorFocus}` },
   { command: "editor.nextTab", keys: ["ctrl+pagedown"] },
   { command: "editor.previousTab", keys: ["ctrl+pageup"] },
 

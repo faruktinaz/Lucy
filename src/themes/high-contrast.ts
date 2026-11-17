@@ -72,7 +72,14 @@ export const highContrast = defineTheme({
   },
   defaultAccent: "blue",
   build: (accent) => ({
-    bg: { base: p.canvas, surface: p.black, raised: p.raised, overlay: p.overlay, inset: p.inset },
+    bg: {
+      canvas: p.black,
+      base: p.canvas,
+      surface: p.black,
+      raised: p.raised,
+      overlay: p.overlay,
+      inset: p.inset,
+    },
     fg: {
       default: p.white,
       muted: p.grey95,

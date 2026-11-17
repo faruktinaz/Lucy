@@ -59,13 +59,13 @@ describe("serializeConfig", () => {
   });
 
   test("keeps invalid values the user wrote instead of silently dropping them", () => {
-    const loaded = parseConfigText('[ui]\ntheme = "dracula"\n[keybindings.bindings]\n"bad.entry" = 42\n');
+    const loaded = parseConfigText('[ui]\ntheme = "bogus"\n[keybindings.bindings]\n"bad.entry" = 42\n');
     const { text } = serializeConfig(withSetting(loaded.config, "ui.density", "compact"), loaded.raw);
     const table = parse(text) as {
       ui: Record<string, unknown>;
       keybindings: { bindings: Record<string, unknown> };
     };
-    expect(table.ui).toEqual({ theme: "dracula", density: "compact" });
+    expect(table.ui).toEqual({ theme: "bogus", density: "compact" });
     expect(table.keybindings.bindings).toEqual({ "bad.entry": 42 });
   });
 

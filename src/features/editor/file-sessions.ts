@@ -73,6 +73,9 @@ export class FileSessions implements Disposable {
     this.#store.add(
       ctx.config.onDidChange((event) => {
         if (event.changed.includes("editor.maxFileSizeMb")) this.#recreateAll();
+        if (event.changed.some((path) => path.startsWith("editor.autosave"))) {
+          for (const { session } of this.#sessions.values()) session.edit?.settingsChanged();
+        }
       }),
     );
   }
@@ -88,9 +91,18 @@ export class FileSessions implements Disposable {
       syntax: this.#ctx.services.syntax,
       maxFileSizeMb: this.#ctx.config.get("editor.maxFileSizeMb"),
       viewer: viewerStateFromTab(tab, this.#ctx.config.get("editor.wrap")),
+      editing: {
+        syntax: this.#ctx.services.syntax,
+        tabWidth: () => this.#ctx.config.get("editor.tabWidth"),
+        autosave: () => ({
+          mode: this.#ctx.config.get("editor.autosave"),
+          delayMs: this.#ctx.config.get("editor.autosaveDelayMs"),
+        }),
+      },
     });
     const store = new DisposableStore();
     store.add(this.#mirrorViewState(tab.id, session));
+    store.add(this.#mirrorDirty(tab.id, session));
     store.add(session);
     this.#sessions.set(tab.id, { session, store });
     return session;
@@ -105,6 +117,14 @@ export class FileSessions implements Disposable {
   active(): FileSession | undefined {
     const tab = this.#ctx.editors.active;
     return tab ? this.forTab(tab) : undefined;
+  }
+
+  /** Every session with unsaved edits. */
+  dirty(): { tabId: string; session: FileSession }[] {
+    const out: { tabId: string; session: FileSession }[] = [];
+    for (const [tabId, { session }] of this.#sessions)
+      if (session.edit?.state.get().dirty) out.push({ tabId, session });
+    return out;
   }
 
   /** Sessions that exist right now (no creation), for status and tests. */
@@ -125,8 +145,41 @@ export class FileSessions implements Disposable {
   }
 
   #recreateAll(): void {
-    for (const id of [...this.#sessions.keys()]) this.#drop(id);
+    // Unsaved edits are never dropped for a setting change; those tabs keep their session.
+    for (const [id, { session }] of [...this.#sessions]) if (!session.edit?.state.get().dirty) this.#drop(id);
     this.generation.set((value) => value + 1);
+  }
+
+  /** The tab's dirty marker follows the buffer (it is created when the file starts editing). */
+  #mirrorDirty(tabId: string, session: FileSession): Disposable {
+    let off: (() => void) | undefined;
+    const attach = () => {
+      if (off || !session.edit) return;
+      const edit = session.edit;
+      let failed = false;
+      const sync = () => {
+        const state = edit.state.get();
+        this.#ctx.editors.setDirty(tabId, state.dirty);
+        // A failed save (auto save included) is said once, not on every retry.
+        if (state.status === "failed" && !failed) {
+          this.#ctx.notifications.show({
+            severity: "error",
+            title: `Could not save ${session.path.split("/").at(-1) ?? session.path}`,
+            message: `${state.error ?? "The file could not be written."} Your changes are still in the editor.`,
+            key: `editor.save.${session.path}`,
+          });
+        }
+        failed = state.status === "failed";
+      };
+      off = edit.state.subscribe(sync);
+      sync();
+    };
+    const offTab = session.tab.state.subscribe(attach);
+    attach();
+    return toDisposable(() => {
+      offTab();
+      off?.();
+    });
   }
 
   #mirrorViewState(tabId: string, session: FileSession): Disposable {

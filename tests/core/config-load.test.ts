@@ -75,7 +75,7 @@ describe("per-key validation", () => {
   const text = [
     "version = 1",
     "[ui]",
-    'theme = "dracula"',
+    'theme = "bogus"',
     'density = "compact"',
     'accent = "#FF8800"',
     "[layout]",
@@ -114,7 +114,7 @@ describe("per-key validation", () => {
     expect(loaded.config.ai.executable).toBe("");
     const byPath = new Map(loaded.problems.map((p) => [p.path, p]));
     expect(byPath.get("ui.theme")?.severity).toBe("warning");
-    expect(byPath.get("ui.theme")?.message).toContain('"dracula"');
+    expect(byPath.get("ui.theme")?.message).toContain('"bogus"');
     expect(byPath.get("ui.theme")?.line).toBe(3);
     expect(byPath.get("layout.sidebar_width")?.message).toContain("16 to 80");
     expect(byPath.get("layout.sidebar_width")?.line).toBe(7);

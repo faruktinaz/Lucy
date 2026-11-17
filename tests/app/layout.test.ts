@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { defaultLayoutState, LayoutService } from "@/app/workbench/layout";
 import {
+  CARD_GAP,
   computeEffectiveLayout,
   type FocusZone,
   LAYOUT_LIMITS,
@@ -52,11 +53,12 @@ function editorMin(width: number): number {
 
 /** Columns left for the editor: viewport minus activity bar and visible side regions. */
 function editorWidth(result: ReturnType<typeof compute>): number {
+  // Cards float on the canvas: a gap at both window edges and after each side card.
   return (
     result.width -
-    result.activityBar.width -
-    (result.sidebar.visible ? result.sidebar.width : 0) -
-    (result.auxiliary.visible ? result.auxiliary.width : 0)
+    2 * result.gap -
+    (result.sidebar.visible ? result.sidebar.width + result.gap : 0) -
+    (result.auxiliary.visible ? result.auxiliary.width + result.gap : 0)
   );
 }
 
@@ -125,7 +127,8 @@ describe("computeEffectiveLayout", () => {
     const drawer = compute(requested, 70, 24, "sidebar");
     expect(drawer.sidebar.visible).toBe(true);
     expect(drawer.sidebar.drawer).toBe(true);
-    expect(drawer.sidebar.width).toBe(70 - LAYOUT_LIMITS.activityBarWidth);
+    // Full width inside the canvas margins.
+    expect(drawer.sidebar.width).toBe(70 - 2 * CARD_GAP);
     expect(drawer.editor.visible).toBe(false);
 
     const auxiliaryDrawer = compute(requested, 70, 24, "auxiliary");

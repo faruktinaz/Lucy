@@ -33,6 +33,11 @@ export interface WatchBatch {
   readonly gitMetaChanged: boolean;
   /** Too many changes to list: consumers should do one full refresh. */
   readonly overflow: boolean;
+  /**
+   * Workspace-relative roots of nested repositories (a `.git` below the workspace root) whose
+   * HEAD, index, refs or state changed: a commit made in a terminal inside one of them.
+   */
+  readonly nestedGitMeta?: readonly string[];
 }
 
 export type WatcherState = "idle" | "watching" | "failed" | "disposed";
@@ -131,6 +136,7 @@ export class Watcher implements Disposable {
   private pendingOverflow = false;
   private pendingMeta = false;
   private pendingLocks = new Set<string>();
+  private pendingNestedMeta = new Set<string>();
   private firstPendingAt = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private flushChain: Promise<void> = Promise.resolve();
@@ -252,7 +258,10 @@ export class Watcher implements Disposable {
       this.onGitEvent(rel === ".git" ? "" : rel.slice(5));
       return;
     }
-    if (hasGitSegment(rel)) return;
+    if (hasGitSegment(rel)) {
+      this.onNestedGitEvent(rel);
+      return;
+    }
     if (!this.pendingOverflow) {
       this.pending.add(rel);
       if (this.pending.size > this.maxBatchPaths) {
@@ -260,6 +269,23 @@ export class Watcher implements Disposable {
         this.pending.clear();
       }
     }
+    this.schedule();
+  }
+
+  /**
+   * A path inside a nested repository's `.git`: its contents never reach `paths`, but a change
+   * to its HEAD, index or refs names the repository so that one refreshes. Lock files count
+   * too: unlike the workspace's own repository there is no fingerprint to compare, and a
+   * spare refresh is cheap.
+   */
+  private onNestedGitEvent(rel: string): void {
+    // The first real `.git` segment (not `.github`).
+    const at = /\/\.git(?:\/|$)/.exec(rel)?.index ?? -1;
+    if (at <= 0) return;
+    const repository = rel.slice(0, at);
+    const sub = rel.slice(at + "/.git".length).replace(/^\//, "");
+    if (classifyGitPath(sub) === "noise") return;
+    this.pendingNestedMeta.add(repository);
     this.schedule();
   }
 
@@ -299,10 +325,17 @@ export class Watcher implements Disposable {
     this.pendingOverflow = false;
     this.pendingMeta = false;
     this.pendingLocks = new Set();
+    const nestedGitMeta = [...this.pendingNestedMeta];
+    this.pendingNestedMeta = new Set();
     if (locks.length > 0 && (await this.locksChangedTargets(locks))) gitMetaChanged = true;
     if (this.currentState !== "watching") return;
-    if (!overflow && paths.length === 0 && !gitMetaChanged) return;
-    this.changeEmitter.emit({ paths, gitMetaChanged, overflow });
+    if (!overflow && paths.length === 0 && !gitMetaChanged && nestedGitMeta.length === 0) return;
+    this.changeEmitter.emit({
+      paths,
+      gitMetaChanged,
+      overflow,
+      ...(nestedGitMeta.length > 0 ? { nestedGitMeta } : {}),
+    });
   }
 
   /** A lock file only matters if the file it guards was actually replaced. */

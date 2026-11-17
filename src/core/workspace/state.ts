@@ -100,6 +100,39 @@ const layoutSchema = z.object({
 
 export type WorkspaceLayoutState = z.infer<typeof layoutSchema>;
 
+/** A tmux session name of Lucy's private server (`lucy-<workspace>-t3`). */
+const sessionName = z.string().regex(/^lucy-[A-Za-z0-9_-]{1,160}$/);
+
+/**
+ * Persistent terminal and agent sessions (terminal.persistence), so they come back after a
+ * restart even when the tmux server is gone (a reboot). Added after version 1 shipped: older
+ * files have no `sessions` and get empty lists. The working directory is stored relative to
+ * the workspace (null: the root, or a directory outside it), like every other stored path.
+ */
+const sessionsSchema = z.object({
+  terminals: lenientList(
+    z.object({
+      name: sessionName,
+      number: z.number().int().min(1).max(100_000),
+      cwd: relativePath.nullable().catch(null),
+    }),
+    20,
+    (t) => t.name,
+  ),
+  agents: lenientList(
+    z.object({
+      name: sessionName,
+      title: clippedText(200),
+      providerId: z.string().max(64).catch("claude"),
+      createdAt: z.number().int().min(0).catch(0),
+    }),
+    20,
+    (a) => a.name,
+  ),
+});
+
+export type WorkspaceSessionsState = z.infer<typeof sessionsSchema>;
+
 export const workspaceStateSchema = z.object({
   version: z.number().int().catch(WORKSPACE_STATE_VERSION),
   openFiles: lenientList(
@@ -125,6 +158,7 @@ export const workspaceStateSchema = z.object({
   recentFiles: lenientList(relativePath, STATE_LIMITS.recentFiles, (p) => p),
   /** The unsent commit message. */
   commitDraft: clippedText(STATE_LIMITS.commitDraftLength),
+  sessions: sessionsSchema.catch({ terminals: [], agents: [] }),
   updatedAt: z.string().max(64).catch(""),
 });
 
@@ -150,6 +184,7 @@ export function defaultWorkspaceState(): WorkspaceState {
     commandMru: [],
     recentFiles: [],
     commitDraft: "",
+    sessions: { terminals: [], agents: [] },
     updatedAt: "",
   };
 }

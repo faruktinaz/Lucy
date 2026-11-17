@@ -2,29 +2,31 @@
  * The editor view for `file` tabs: loads the tab's session, then shows the code surface, the
  * Markdown preview or an information card, with the find bar floating at the top right.
  */
-import { useRenderer } from "@opentui/react";
 import { type ReactNode, useEffect } from "react";
 import { useApp, useStore } from "@/app/react";
 import type { EditorViewProps } from "@/app/workbench/views";
+import { Store } from "@/core/store";
 import { Icon } from "@/ui/primitives/icon";
 import { useMeasure } from "@/ui/primitives/measure";
 import { Spinner } from "@/ui/primitives/spinner";
 import { useTheme } from "@/ui/theme/theme-context";
+import { readOnlyReason } from "../edit-session";
 import type { FileSession } from "../file-session";
 import type { FileSessions } from "../file-sessions";
 import { type DocumentNotice, showsMarkdownPreview } from "../model";
-import type { ClipboardBridge } from "../system-actions";
 import { CodeSurface } from "./code-surface";
 import { DocumentCard } from "./document-card";
+import { EditSurface } from "./edit-surface";
 import { FindBar } from "./find-bar";
 import { MarkdownPreview } from "./markdown-preview";
 
 export interface FileViewDeps {
   readonly sessions: FileSessions;
-  readonly clipboard: ClipboardBridge;
   /** The resolved external editor's name ("micro"), for the card buttons. */
   readonly editorName: () => string | null;
 }
+
+const IDLE_STATE = new Store(0);
 
 function NoticeBar({ notices }: { notices: readonly DocumentNotice[] }) {
   const theme = useTheme();
@@ -74,14 +76,23 @@ function SessionView({
   }, [session]);
 
   const document = state.document;
+  const edit = session.edit;
+  // A dirty buffer whose file was deleted stays open, so the edits can be saved again.
+  const keepEditing = edit !== null && document?.kind === "unavailable" && edit.state.get().dirty;
   let body: ReactNode;
+  let notices: readonly DocumentNotice[] = [];
   if (!document) body = <Loading />;
-  else if (document.kind === "text") {
-    body = showsMarkdownPreview(viewer, document) ? (
-      <MarkdownPreview document={document} focused={focused} />
-    ) : (
-      <CodeSurface session={session} document={document} focused={focused} keysEnabled />
-    );
+  else if (document.kind === "text" || keepEditing) {
+    if (document.kind === "text") notices = document.notices;
+    const reason = document.kind === "text" && !edit ? readOnlyReason(document) : null;
+    if (reason) notices = [...notices, { kind: "outside-workspace", message: reason }];
+    if (document.kind === "text" && showsMarkdownPreview(viewer, document)) {
+      body = <MarkdownPreview document={document} content={edit?.text()} focused={focused} />;
+    } else if (edit) {
+      body = <EditSurface session={session} edit={edit} focused={focused} />;
+    } else if (document.kind === "text") {
+      body = <CodeSurface session={session} document={document} focused={focused} keysEnabled />;
+    }
   } else {
     body = (
       <DocumentCard
@@ -94,6 +105,8 @@ function SessionView({
     );
   }
   const showFind = findOpen && document?.kind === "text" && !showsMarkdownPreview(viewer, document);
+  // Re-render when the buffer's save state changes (conflict bar, the deleted-but-dirty case).
+  useStore<unknown>(edit?.state ?? IDLE_STATE);
   return (
     <box
       flexDirection="column"
@@ -102,7 +115,7 @@ function SessionView({
       backgroundColor={theme.colors.editor.bg}
       onSizeChange={onSizeChange}
     >
-      {document?.kind === "text" ? <NoticeBar notices={document.notices} /> : null}
+      <NoticeBar notices={notices} />
       {showFind ? <FindBar session={session} width={size.width} /> : null}
       <box flexDirection="column" flexGrow={1} minHeight={0}>
         {body}
@@ -115,18 +128,9 @@ function SessionView({
 export function createFileView(deps: FileViewDeps) {
   // biome-ignore lint/correctness/noComponentHookFactories: one stable component per activation.
   return function FileView({ tab, focused }: EditorViewProps) {
-    const renderer = useRenderer();
     // Sessions are recreated when a setting that needs a fresh load changes.
     useStore(deps.sessions.generation);
     const session = deps.sessions.forTab(tab);
-
-    // Commands run outside React; give them the renderer's OSC 52 clipboard while mounted.
-    useEffect(() => {
-      deps.clipboard.terminal = renderer;
-      return () => {
-        if (deps.clipboard.terminal === renderer) deps.clipboard.terminal = null;
-      };
-    }, [renderer]);
 
     if (!session) return null;
     return <SessionView session={session} focused={focused} deps={deps} />;

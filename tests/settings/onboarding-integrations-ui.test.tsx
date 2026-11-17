@@ -117,7 +117,8 @@ describe("Integrations view", () => {
     const model = settingsServices(app.ctx).integrations();
     await until(app, () => model.state.checkedAt !== null, 15_000);
     const frame = app.tui.frame();
-    expect(frame).toContain("INTEGRATIONS");
+    // The view title is the active entry of the sidebar switcher.
+    expect(frame).toContain("⊞ Integrations");
     expect(frame).toContain("Lucy has no plugin system");
     expect(frame).toContain("3 of 12 found");
     expect(frame).toContain("2.43.0");

@@ -10,11 +10,13 @@
  *   // The demo workspace with its isolated Git environment:
  *   const demo = await mountApp({ workspace: "demo", git: "real", startBackground: true });
  */
+
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { type ReactNode, useSyncExternalStore } from "react";
 import type { AgentProvider } from "@/adapters/agents";
+import type { WatchFactory } from "@/adapters/filesystem";
 import {
   createGitAdapterFactory,
   type GitAdapterFactory,
@@ -23,6 +25,7 @@ import {
 } from "@/adapters/git";
 import type { PtyProcess, PtySpawnOptions } from "@/adapters/pty";
 import type { AppContext } from "@/app/app-context";
+import { type ClipboardBackend, MemoryClipboardBackend } from "@/app/clipboard";
 import { type CreatedApp, createApp } from "@/app/create-app";
 import { buildDemoWorkspace, type DemoWorkspace, isolatedGitEnv } from "@/app/demo";
 import type { FeatureModule } from "@/app/feature";
@@ -57,6 +60,10 @@ export interface MountAppOptions extends Omit<MountOptions, "renderer"> {
   features?: readonly FeatureModule[];
   /** Restore layout and tabs from a previous mount with the same `dirs`. Default true. */
   restore?: boolean;
+  /** Replaces `fs.watch` for the workspace watcher (deterministic file events). */
+  watchFactory?: WatchFactory;
+  /** Mark the first paint after mounting (resolves `lifecycle.firstPaint`). Default true. */
+  markFirstPaint?: boolean;
   /** Start Git status and the watcher after mounting. Default false. */
   startBackground?: boolean;
   /** Reuse Lucy directories (e.g. to test restore across two mounts). Default: fresh temp dirs. */
@@ -70,6 +77,8 @@ export interface MountAppOptions extends Omit<MountOptions, "renderer"> {
   /** Called instead of disposing when the app quits (`app.quit`). */
   onQuit?: () => void | Promise<void>;
   onSuspend?: () => void | Promise<void>;
+  /** Clipboard backend. Default: a fresh memory backend, so no test touches the real clipboard. */
+  clipboard?: ClipboardBackend;
 }
 
 export interface MountedApp {
@@ -82,6 +91,8 @@ export interface MountedApp {
   /** The mock Git adapter, when `git` is mock. */
   git?: MockGitAdapter;
   demo?: DemoWorkspace;
+  /** The memory clipboard, unless `clipboard` was given. */
+  clipboard?: MemoryClipboardBackend;
   dispose(): Promise<void>;
 }
 
@@ -172,7 +183,9 @@ export async function mountApp(options: MountAppOptions = {}): Promise<MountedAp
     renderer: { exitOnCtrlC: false },
   });
 
+  const memoryClipboard = options.clipboard ? undefined : new MemoryClipboardBackend();
   const app = await createApp({
+    clipboard: options.clipboard ?? memoryClipboard,
     renderer: tui.renderer,
     workspace: resolved,
     dirs,
@@ -191,6 +204,7 @@ export async function mountApp(options: MountAppOptions = {}): Promise<MountedAp
       gitAdapterFactory,
       toolEnv,
       ptySpawn: options.ptySpawn ?? noPty,
+      watchFactory: options.watchFactory,
       agentProviders: options.agentProviders ?? [],
     },
     onQuit: options.onQuit,
@@ -198,7 +212,8 @@ export async function mountApp(options: MountAppOptions = {}): Promise<MountedAp
   });
 
   await tui.act(() => slot.set(app.element));
-  app.markFirstPaint({ startBackground: options.startBackground ?? false });
+  if (options.markFirstPaint !== false)
+    app.markFirstPaint({ startBackground: options.startBackground ?? false });
   await tui.settle();
 
   let disposed = false;
@@ -222,5 +237,15 @@ export async function mountApp(options: MountAppOptions = {}): Promise<MountedAp
   };
   // The test preload disposes everything in this set after each test, even when it fails.
   live.add(dispose);
-  return { tui, app, ctx: app.context, root: resolved.workspace.root, dirs, git: mockGit, demo, dispose };
+  return {
+    tui,
+    app,
+    ctx: app.context,
+    root: resolved.workspace.root,
+    dirs,
+    git: mockGit,
+    demo,
+    clipboard: memoryClipboard,
+    dispose,
+  };
 }

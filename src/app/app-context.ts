@@ -10,6 +10,7 @@ import type { Logger } from "@/core/log";
 import type { AppDirs } from "@/core/paths";
 import type { Workspace, WorkspaceStateStore } from "@/core/workspace";
 import type { ThemeService } from "../ui/theme/ui-theme";
+import type { ClipboardService } from "./clipboard";
 import type { DomainServices } from "./domain/domain-services";
 import type { PersistedState } from "./persistence";
 import type { DialogService } from "./workbench/dialogs";
@@ -90,6 +91,8 @@ export interface AppContext {
   readonly menus: MenuService;
   readonly overlays: OverlayService;
   readonly hints: HintService;
+  /** Puts text on the user's clipboard and reports how (or why not). */
+  readonly clipboard: ClipboardService;
 
   /** Git, search, syntax, file operations, terminals and agents; created on first use. */
   readonly services: DomainServices;

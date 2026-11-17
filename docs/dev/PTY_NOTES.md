@@ -484,3 +484,75 @@ colours, 09 alternate-screen apps, 10 throughput, 11 Claude first screen, 12 tra
 (prints key names and types only), 13 kernel `run()` timeout, 14 escape-hatch interception,
 15 resize while hidden, 16 spawn and terminal edge cases, 17 sniffer throughput, 18 full pipeline
 throughput. `harness.ts` glues a renderable to a PTY for spikes.
+
+---
+
+## 13. Session persistence with a private tmux server (`terminal.persistence`)
+
+`auto` (default) uses tmux 3.3+ when installed, `tmux` requires it, `off` keeps the plain PTYs.
+Under the test and screenshot harness (`LUCY_TEST_ROOT`), `auto` never starts tmux.
+
+**Design.** `src/adapters/pty/tmux.ts` (`TmuxBackend`, `tmuxConfig`, `detectTmux`) and
+`src/features/terminal/persistence.ts` (per-app helper used by Terminal and AI).
+- One server per installation: `tmux -L lucy-<hash of the state dir> -f <state>/tmux/lucy.conf`.
+  Never the default server, never `~/.tmux.conf` (`-f` is always passed). The config is
+  rewritten and `source-file`d on each start, so a running server picks up a new version's config.
+- One tmux session per Lucy session: `lucy-<workspace id>-t<n>` (terminal n), `...-a<n>` (agent
+  n), with `@lucy-kind`, `@lucy-number`, `@lucy-provider` session options.
+- Lucy's PTY runs only the client: `tmux ... new-session -A -s <name> -c <cwd> -e PATH=... -- argv`
+  (`-A` attaches when the session exists). Only PATH, COLORTERM, LANG, LC_*, SHELL, HOME, USER
+  and explicit overrides go on the command line (it is visible to other processes); the rest
+  of the environment comes from the server, which inherited it from the first client.
+- `TmuxPty` wraps the client: `kill()` = `kill-session` (closing a terminal or agent session in
+  the UI); dispose / hangup / killSync = detach. When the client exits, the pane is asked how
+  the program ended (`#{pane_dead_status}` / `#{pane_dead_signal}`).
+
+**Configuration, each line verified with tmux 3.7b** (spikes/pty/21-tmux-config.ts and
+22-tmux-wheel.ts drive the real emulator; tests/pty/tmux.test.ts checks the backend):
+
+| Setting | Why | Verified |
+| --- | --- | --- |
+| `prefix None`, `prefix2 None`, `unbind -a -T prefix/root` | no key is swallowed | Ctrl+R, Ctrl+C, Escape, Tab, Turkish text reach the program; `list-keys -T prefix` empty |
+| `escape-time 0` | Escape without delay | Escape arrives in ~20 ms |
+| `extended-keys on`, `extended-keys-format csi-u` | modified keys for programs that ask (modifyOtherKeys, as Claude Code does) | Shift+Enter arrives as `CSI 13;2u`; tmux asks Lucy's emulator for `CSI > 4;2 m` |
+| `focus-events on` | focus reports | `CSI I` / `CSI O` reach a program with `?1004` |
+| bracketed paste (default) | pastes stay pastes | `CSI 200~ ... 201~` reaches a program with `?2004` |
+| `terminal-features ...:RGB:extkeys:focus:clipboard:title:sync:usstyle` | truecolor and features of the emulator | 24-bit SGR reaches the client |
+| `terminal-overrides ...:smcup@:rmcup@` | the client draws on the normal screen | no `?1049h` from the client |
+| `set-clipboard on`, `allow-passthrough on` | OSC 52 and DCS passthrough | OSC 52 from the program reaches the client |
+| `status off` | invisible | no status line on screen |
+| `set-titles on` + a string that drops tmux's host-name default | the program's title becomes the tab title | OSC 2 forwarded; tabs show `sh`, not the host name |
+| `bell-action any`, `monitor-bell on` | "needs attention" still works | BEL reaches the client |
+| `history-limit 100000` | history that survives Lucy restarts | `#{history_limit}` 100000 |
+| `mouse on` + wheel/mouse bindings | wheel scrollback through tmux history; mouse for programs that track it | wheel up enters copy mode at earlier lines, wheel down returns; clicks reach a program with `?1000;1006` |
+| `window-size latest` | the window follows Lucy's size | 100x30 after a resize |
+| `remain-on-exit on` + `pane-died` hook `run-shell -C "detach-client -s '#{session_name}'"` | keep the exit status; the client exits so Lucy notices | exit code 3/7 reported; a plain `detach-client` hook did not fire (verified) |
+
+**Lifecycle.** Quit or crash: the client dies (registry kill or kernel hangup), the session
+lives on (the server is daemonized, outside the client's tree). Closing a terminal or an agent
+session in the UI, or **End Background Sessions** (`terminal.endBackgroundSessions`), ends the
+tmux sessions. The quit confirmation (only while an agent session runs, as before) says "N
+sessions keep running in the background; open Lucy again to continue".
+
+**Restore.** The workspace state stores `sessions.terminals` (name, number, cwd relative to the
+workspace) and `sessions.agents` (name, title, provider, createdAt); older files have none (empty
+lists). On start, after the first frame and only when something was saved: live sessions are
+reattached in number order (tmux redraws the screen; history via the wheel), dead ones show as
+ended with their exit status (Restart starts over in the same tmux name), lost ones (reboot)
+come back as fresh shells in their last directory, and agents as ended entries whose action is
+"Continue session" (`claude --continue`).
+
+**Fallback.** tmux missing, older than 3.3 or broken: one calm notice per installation
+(marker `<state>/notices/tmux-unavailable`), then plain PTYs as before.
+
+**Differences from the non-persistent mode (known limits).**
+- Programs that use only the kitty keyboard protocol (`CSI > 1 u`) get plain keys from tmux:
+  Shift+Enter arrives as Enter. Programs that enable modifyOtherKeys (Claude Code does) get
+  extended keys, as CSI u (`CSI 114;5u` for Ctrl+R in such programs; plain programs get `\x12`).
+- Scrollback is tmux's: the emulator's own scrollback does not grow (tmux redraws inside a
+  scroll region). While scrolled back (copy mode) keys go to copy mode until q, Escape or
+  scrolling to the bottom. Mouse drag selects in tmux copy mode and copies through OSC 52; whether
+  that reaches the system clipboard depends on Lucy's clipboard handling (not verified here).
+- Inside, `TERM=xterm-256color`, `TERM_PROGRAM=tmux` and `TMUX` are set by tmux.
+- Changing `terminal.persistence` affects new sessions; existing background sessions stay until
+  ended. The environment of new sessions is the server's plus the forwarded variables above.

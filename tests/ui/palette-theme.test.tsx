@@ -53,15 +53,15 @@ describe("themes", () => {
     const { tui, ctx } = await mountApp({ workspace: { root: stableWorkspace() } });
     const mocha = getTheme("catppuccin-mocha").tokens;
     const before = tui.spans();
-    // The editor canvas (base) and the status bar (surface).
-    expect(hexOf(cellAt(before, 80, 20).bg)).toBe(mocha.bg.base);
-    expect(hexOf(cellAt(before, 80, 34).bg)).toBe(mocha.bg.surface);
+    // The editor card (base) and the status bar, which sits on the canvas.
+    expect(hexOf(cellAt(before, 50, 20).bg)).toBe(mocha.bg.base);
+    expect(hexOf(cellAt(before, 50, 34).bg)).toBe(mocha.bg.canvas);
 
     await tui.act(() => ctx.config.set("ui.theme", "high-contrast", { persist: false }));
     const contrast = getTheme("high-contrast").tokens;
     const after = tui.spans();
-    expect(hexOf(cellAt(after, 80, 20).bg)).toBe(contrast.bg.base);
-    expect(hexOf(cellAt(after, 80, 34).bg)).toBe(contrast.bg.surface);
+    expect(hexOf(cellAt(after, 50, 20).bg)).toBe(contrast.bg.base);
+    expect(hexOf(cellAt(after, 50, 34).bg)).toBe(contrast.bg.canvas);
     expect(tui.frame()).toContain("High Contrast");
   });
 

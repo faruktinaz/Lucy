@@ -4,11 +4,12 @@
  * Every session is spawned through the app's `PtyRegistry`, so quitting Lucy kills its tree.
  */
 import { basename } from "node:path";
-import { TerminalSession } from "@/adapters/pty";
+import { type PtyExitInfo, TerminalSession } from "@/adapters/pty";
 import type { AppContext } from "@/app/app-context";
 import type { Disposable } from "@/core/events";
 import { Store } from "@/core/store";
 import { sanitizeForDisplay, truncateEnd } from "@/core/text";
+import { sessionPersistence } from "./persistence";
 
 export interface ShellTerminal {
   readonly id: string;
@@ -17,6 +18,8 @@ export interface ShellTerminal {
   /** Base name of the shell executable: "zsh". */
   readonly shellName: string;
   readonly session: TerminalSession;
+  /** Where it started (the shell may have moved since; OSC 7 reports that). */
+  readonly cwd: string;
 }
 
 export interface ShellTerminalsState {
@@ -71,35 +74,109 @@ export class ShellTerminals implements Disposable {
 
   /**
    * Creates a shell session. The pane that displays it starts the process once its emulator
-   * is connected; a spawn failure shows in the pane with a Restart action.
+   * is connected; a spawn failure shows in the pane with a Restart action. With persistence the
+   * shell runs in its own tmux session (`restore` reattaches to it, or recreates it).
    */
-  create(): ShellTerminal {
+  create(restore?: { number: number; cwd: string; ended?: PtyExitInfo }): ShellTerminal {
     const { config, workspace, env } = this.ctx;
     const shell = resolveShell(config.get("terminal.shell"), config.get("terminal.args"));
-    const number = this.nextNumber++;
+    const number = restore?.number ?? this.nextNumber;
+    this.nextNumber = Math.max(this.nextNumber, number + 1);
+    const cwd = restore?.cwd ?? workspace.root;
+    const persistence = sessionPersistence(this.ctx);
+    const backend = persistence.backend();
+    const spawn = backend
+      ? backend.spawner({
+          name: persistence.sessionName("t", number),
+          argv: shell.argv,
+          cwd,
+          meta: { kind: "terminal", number: String(number) },
+        })
+      : this.ctx.services.pty.spawn;
     const session = new TerminalSession({
       argv: shell.argv,
-      cwd: workspace.root,
+      cwd,
       env: { TERM_PROGRAM_VERSION: env.version },
       cols: this.lastSize.cols,
       rows: this.lastSize.rows,
-      spawn: this.ctx.services.pty.spawn,
+      spawn,
       autoStart: false,
+      persistent: backend !== null,
+      ended: restore?.ended ? { exit: restore.ended } : undefined,
     });
-    const terminal: ShellTerminal = { id: `terminal-${number}`, number, shellName: shell.name, session };
+    const terminal: ShellTerminal = { id: `terminal-${number}`, number, shellName: shell.name, session, cwd };
     let last = "";
     this.watchers.set(
       terminal.id,
       session.state.subscribe(() => {
-        const { title, status } = session.state.get();
-        const key = `${status}\u0000${title}`;
+        const { title, status, cwd: reported } = session.state.get();
+        const key = `${status}\u0000${title}\u0000${reported ?? ""}`;
         if (key === last) return;
         last = key;
         this.revision.set((value) => value + 1);
+        this.save();
       }),
     );
     this.store.set((state) => ({ terminals: [...state.terminals, terminal], activeId: terminal.id }));
+    this.save();
     return terminal;
+  }
+
+  /**
+   * Brings back this workspace's terminals: reattaches the tmux sessions that still exist,
+   * shows ended ones as ended, and recreates lost ones (after a reboot) as fresh shells in
+   * their last directory. Runs only when something was saved, so a plain start runs no tmux.
+   */
+  async restore(): Promise<number> {
+    const persistence = sessionPersistence(this.ctx);
+    const saved = persistence.saved().terminals;
+    if (saved.length === 0 || !persistence.backend()) return 0;
+    const live = (await persistence.list()).filter((session) => session.meta.kind === "terminal");
+    const numbers = new Map<number, { cwd: string; ended?: PtyExitInfo }>();
+    for (const entry of saved) numbers.set(entry.number, { cwd: persistence.restoredCwd(entry.cwd) });
+    for (const session of live) {
+      const number = Number(session.meta.number);
+      if (!Number.isInteger(number) || number < 1) continue;
+      numbers.set(number, {
+        cwd: session.currentPath ?? numbers.get(number)?.cwd ?? this.ctx.workspace.root,
+        ended: session.dead ? (session.exit ?? undefined) : undefined,
+      });
+    }
+    const ordered = [...numbers.entries()].sort(([a], [b]) => a - b);
+    for (const [number, entry] of ordered) {
+      if (this.disposed || this.state.terminals.some((terminal) => terminal.number === number)) continue;
+      this.create({ number, cwd: entry.cwd, ended: entry.ended });
+    }
+    const first = this.state.terminals[0];
+    if (first) this.activate(first.id);
+    return ordered.length;
+  }
+
+  /** Running terminals that keep running in the background when Lucy quits. */
+  runningPersistent(): number {
+    return this.state.terminals.filter(
+      (terminal) => terminal.session.persistent && terminal.session.isRunning,
+    ).length;
+  }
+
+  /** Forgets every terminal without ending anything (their tmux sessions are already gone). */
+  forgetAll(): void {
+    for (const terminal of [...this.state.terminals]) this.remove(terminal);
+  }
+
+  /** The list that comes back after a restart (only persistent terminals). */
+  private save(): void {
+    if (this.disposed) return;
+    const persistence = sessionPersistence(this.ctx);
+    const terminals = this.state.terminals
+      .filter((terminal) => terminal.session.persistent)
+      .map((terminal) => ({
+        name: persistence.sessionName("t", terminal.number),
+        number: terminal.number,
+        cwd: persistence.storedCwd(terminal.session.state.get().cwd ?? terminal.cwd),
+      }));
+    const before = persistence.saved().terminals;
+    if (JSON.stringify(before) !== JSON.stringify(terminals)) persistence.save({ terminals });
   }
 
   activate(id: string): void {
@@ -146,7 +223,11 @@ export class ShellTerminals implements Disposable {
     this.disposed = true;
     for (const unsubscribe of this.watchers.values()) unsubscribe();
     this.watchers.clear();
-    for (const terminal of this.state.terminals) terminal.session.dispose();
+    // Quitting: persistent shells keep running in tmux (the client is only detached); the
+    // others are killed as before.
+    for (const terminal of this.state.terminals) {
+      terminal.session.dispose({ kill: !terminal.session.persistent });
+    }
     this.store.set({ terminals: [], activeId: null });
   }
 
@@ -165,5 +246,6 @@ export class ShellTerminals implements Disposable {
       const activeId = state.activeId === terminal.id ? (neighbour?.id ?? null) : state.activeId;
       return { terminals, activeId };
     });
+    this.save();
   }
 }

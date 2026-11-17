@@ -47,6 +47,9 @@ async function open(app: MountedApp, path: string, line?: number): Promise<void>
     app.ctx.focus.focus("editor");
     if (line !== undefined) app.ctx.editors.reveal({ tabId: tab.id, line });
   });
+  // Text files open in the editor: wait until it (or a card) is there before sending keys.
+  await app.tui.waitForText(/Saved|Read-only|PNG image|larger than|File not found|File was deleted/);
+  await app.tui.advance(20);
 }
 
 function numbered(count: number): string {
@@ -93,8 +96,9 @@ describe("file view", () => {
     expect(frame).toContain("Ln 1, Col 1");
     expect(frame).toContain("TypeScript");
     expect(frame).toContain("UTF-8");
-    expect(frame).toContain("Read-only · E to edit");
-    expect(frame).toContain("Edit"); // breadcrumb action
+    // An editable file: the save state instead of the read-only hint.
+    expect(frame).toContain("Saved");
+    expect(frame).not.toContain("Read-only");
   });
 
   test("text frames at 120x35 and 90x28", async () => {
@@ -119,10 +123,11 @@ describe("file view", () => {
     await app.tui.waitForText("Ln 121");
     await app.tui.press("pagedown");
     expect(app.tui.frame()).not.toContain("Ln 121,");
-    await app.tui.press("home");
+    // In the editor Home/End stay on the line; Ctrl+Home/End go to the ends of the file.
+    await app.tui.press("ctrl+home");
     await app.tui.waitForText("Ln 1, Col 1");
     expect(app.tui.frame()).toContain("const line1 = 1;");
-    await app.tui.press("end");
+    await app.tui.press("ctrl+end");
     await app.tui.waitForText("Ln 200");
     await app.tui.press("ctrl+home");
     await app.tui.waitForText("Ln 1,");
@@ -291,7 +296,8 @@ describe("file view", () => {
     });
     await open(app, "e.ts", 7);
     await app.tui.waitForText("Ln 7");
-    await app.tui.press("e");
+    await app.tui.press("ctrl+k");
+    await app.tui.press("o");
     await app.tui.waitForText("edited outside", { timeoutMs: 5000 });
     expect(events).toEqual(["suspend", "resume"]);
     expect(readFileSync(log, "utf8")).toBe(`--line=7\n${join(realpathSync(root), "e.ts")}\n`);

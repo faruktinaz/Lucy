@@ -1,11 +1,11 @@
 # Lucy Workspace
 
 Lucy Workspace is a local-first developer workspace that runs in your terminal: a file explorer,
-code viewer, project search, Source Control with diffs, and an embedded Claude Code panel in one
+code editor, project search, Source Control with diffs, and an embedded Claude Code panel in one
 TUI for macOS and Linux. You start it with `lucy .` in a project folder; it has no server, no
 account and no telemetry.
 
-![Lucy Workspace with the explorer, a file and Source Control](docs/images/hero.png)
+![Lucy Workspace with the explorer, a file and the Claude Code panel](docs/images/hero.png)
 
 > Status: version 0.1.0, early development. The core workflow works; the lists below say what is
 > and is not built yet, and [docs/ROADMAP.md](docs/ROADMAP.md) tracks the rest.
@@ -14,16 +14,25 @@ account and no telemetry.
 
 ### Works today
 
-- **Explorer**: lazy-loaded tree with Git decorations, filter, hidden and ignored files on demand,
-  create / rename / delete (deletes go to Lucy's own trash and can be undone), copy path.
-- **Code viewer**: tabs with preview and pinned tabs, offline Tree-sitter highlighting, find in file
-  (plain, case, whole word, regex), go to line, word wrap, Markdown preview, back / forward
-  navigation. The viewer is read-only: editing opens the file in your own terminal editor (Micro,
-  Helix, Neovim, Vim, nano, vi, or `$VISUAL` / `$EDITOR`).
-- **Source Control**: staged / changes / untracked / conflict groups; stage, unstage and discard per
-  file or all; commit and amend; switch and create branches; stash and stash pop; fetch, pull and
-  push; commit history; unified and split diffs with word-level highlights and next / previous
-  change.
+- **Explorer**: lazy-loaded tree with Git decorations (also inside nested repositories), filter,
+  hidden and ignored files on demand, create / rename / delete (deletes go to Lucy's own trash and
+  can be undone), copy path.
+- **Editor**: files are edited in place, with undo / redo, cut / copy / paste and auto save
+  (`editor.autosave`: after a short delay, when the editor loses focus, or off; `Ctrl+S` saves
+  by hand). An unsaved file is marked in its tab, closing it asks first, and a file changed on
+  disk while you have unsaved edits is reported instead of overwritten. Also: tabs with preview
+  and pinned tabs, find in file (plain, case, whole word, regex), go to line, word wrap, Markdown
+  preview, back / forward navigation. `Ctrl+K O` still opens the file in your own terminal editor
+  (Micro, Helix, Neovim, Vim, nano, vi, or `$VISUAL` / `$EDITOR`).
+- **Syntax highlighting**, offline, for about 65 file types: Tree-sitter grammars for the main
+  languages and lighter built-in tokenizers for the rest (for example SQL, `.env`, Dockerfile,
+  Terraform, Git files and logs). Files Lucy does not recognize get a conservative fallback.
+- **Source Control**: every repository in the folder, including repositories nested below it
+  (`git.repositoryScanDepth`, default 3 levels), each shown separately and refreshed when a commit
+  happens inside it, also from a terminal or a coding agent. Staged / changes / untracked /
+  conflict groups; stage, unstage and discard per file or all; commit and amend; switch and create
+  branches; stash and stash pop; fetch, pull and push; commit history; unified and split diffs
+  with word-level highlights and next / previous change.
 - **Search**: fuzzy Quick Open over a file index, and project-wide content search with match case,
   whole word and regex (ripgrep when installed, `git grep` in a repository, a built-in engine
   otherwise).
@@ -31,20 +40,33 @@ account and no telemetry.
   restart, rename and close session, a list of past sessions, and prompt templates (explain, review
   diff, write tests) that are pasted, never sent.
 - **Terminal panel**: one or more ordinary shells in the bottom panel.
-- **Workbench**: command palette, remappable keybindings with a Keyboard Shortcuts editor, Settings
-  editor, first-run setup, four themes (Catppuccin Mocha, Tokyo Night, Gruvbox Dark, High
-  Contrast) with accent colors, Nerd Font / Unicode / ASCII icons, truecolor / 256 / 16 color
-  modes, layouts that adapt to the terminal width, zen mode and a maximized panel, a file watcher,
+- **Persistent sessions**: with tmux installed, terminals and Claude Code sessions run in a private
+  tmux server (its own socket, not your tmux) and keep running when Lucy quits; the next start
+  reattaches to them. "End Background Sessions" stops them; `terminal.persistence = "off"` turns
+  this off so sessions end with Lucy.
+- **Copying**: Lucy turns on mouse reporting, so the terminal's own selection does not see text in
+  Lucy. Selecting text with the mouse copies it (`ui.copyOnSelect`, on by default), `Ctrl+C`
+  outside a terminal copies the selection, and `Ctrl+Shift+C` copies a selection in a terminal.
+  Copies go through the platform clipboard tool (`pbcopy`, `wl-copy`, `xclip`, `xsel`,
+  `clip.exe`), or OSC 52 over SSH.
+- **Workbench**: a review-first layout (the Claude Code panel open from 120 columns, the sidebar
+  on Changes when there is something to review), command palette, remappable keybindings with a
+  Keyboard Shortcuts editor, Settings editor, first-run setup, twelve themes (Catppuccin Mocha,
+  Tokyo Night, Gruvbox Dark, Dracula, Nord, One Dark, Rosé Pine, Kanagawa Wave, Everforest Dark,
+  GitHub Dark, Solarized Dark, High Contrast) with accent colors, rounded or square corners
+  (`ui.cornerStyle`), Nerd Font / Unicode / ASCII icons, truecolor / 256 / 16 color modes,
+  layouts that adapt to the terminal width, zen mode and a maximized panel, a file watcher,
   restore of open tabs, layout, expanded folders, search query and commit draft per folder.
 - **Demo mode**: `lucy --demo` opens a throwaway Git project with isolated settings, optionally in
   the middle of a merge conflict (`--conflict`).
 
 ### Not yet
 
-- Editing inside Lucy (there is no editable buffer; files open in an external editor).
 - Staging or discarding individual hunks or lines (staging is per file).
-- Language servers, diagnostics, go to definition. The "Fix diagnostics" prompt template is listed
-  but disabled because there is no diagnostics source.
+- Completion, language servers, diagnostics, go to definition. The "Fix diagnostics" prompt
+  template is listed but disabled because there is no diagnostics source.
+- Drag and drop.
+- Zooming images.
 - A workspace-trust prompt before Git integration starts on an untrusted folder (see
   [docs/SECURITY.md](docs/SECURITY.md)).
 - Precise Claude Code status: "working" and "needs attention" are guessed from terminal output.
@@ -53,8 +75,8 @@ account and no telemetry.
 
 | | |
 |---|---|
-| ![Source Control with an inline diff](docs/images/source-control.png) | ![Claude Code panel](docs/images/ai-panel.png) |
-| ![Code viewer with find](docs/images/editor.png) | ![Project search](docs/images/search.png) |
+| ![Source Control over three repositories, with a diff](docs/images/source-control.png) | ![Claude Code panel](docs/images/ai-panel.png) |
+| ![An edited, unsaved file](docs/images/editor.png) | ![Project search](docs/images/search.png) |
 | ![Settings editor](docs/images/settings.png) | |
 
 ## Requirements
@@ -64,8 +86,9 @@ account and no telemetry.
 - Git, for Source Control and the fastest file index.
 - A terminal with truecolor support. A terminal that speaks the kitty keyboard protocol (Ghostty,
   kitty, WezTerm, foot) unlocks the `Ctrl+Shift` shortcuts.
-- Optional: ripgrep (faster content search), the Claude Code CLI (for the AI panel), a terminal
-  editor (Micro, Helix, Neovim, Vim, nano), a Nerd Font for icons.
+- Optional: ripgrep (faster content search), the Claude Code CLI (for the AI panel), tmux (sessions
+  that outlive Lucy), a clipboard tool on Linux (`wl-copy`, `xclip` or `xsel`), a terminal editor
+  (Micro, Helix, Neovim, Vim, nano), a Nerd Font for icons.
 
 ## Install and run
 
@@ -95,14 +118,17 @@ enables the debug console.
 | Toggle sidebar / bottom panel | `Ctrl+B` / `Ctrl+J` |
 | Toggle the Claude Code panel / focus it | `Ctrl+K A` or `Ctrl+Shift+A` / `Ctrl+L` or `Ctrl+\ A` |
 | New Claude Code session / continue / resume | `Ctrl+K N` or `Ctrl+\ N` / `Ctrl+K Ctrl+N` / `Ctrl+K Shift+N` |
-| Insert a prompt template | `Ctrl+K I` (outside Source Control), `Ctrl+\ I` |
+| Insert a prompt template | `Ctrl+K I`, `Ctrl+\ I` |
 | Toggle terminal / new terminal | `Ctrl+K T`, ``Ctrl+` ``, `Ctrl+\ T` / `Ctrl+K Shift+T` |
 | Move focus between parts | `Ctrl+K` + arrow, `Ctrl+\` + `H` `J` `K` `L`, `F6` / `Shift+F6` |
+| Save / undo / redo | `Ctrl+S` or `Ctrl+K S` / `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y` |
+| Cut / copy / paste in the editor | `Ctrl+X` / `Ctrl+C` / your terminal's paste key |
+| Copy the mouse selection | select with the mouse (copy on select), `Ctrl+C` outside a terminal, `Ctrl+Shift+C` in a terminal |
 | Find in file / next / previous / go to line | `Ctrl+F` / `F3` / `Shift+F3` / `Ctrl+G` |
-| Close tab / next tab / previous tab | `Ctrl+W` / `Ctrl+PageDown` / `Ctrl+PageUp` |
-| Open the file in your editor | `E` or `Ctrl+K O` |
-| Stage / unstage / discard (Source Control) | `Ctrl+K S` / `Ctrl+K U` / `Ctrl+K D` |
-| Commit | `Ctrl+Enter` in the message box, `Ctrl+K C` |
+| Close tab / next tab / previous tab | `Ctrl+W` (also while editing) / `Ctrl+PageDown` / `Ctrl+PageUp` |
+| Open the file in your terminal editor | `Ctrl+K O` (`E` in a read-only file) |
+| Stage / unstage / discard (Source Control) | `Ctrl+K S` (saves instead while a file editor has focus) / `Ctrl+K U` / `Ctrl+K D` |
+| Commit / focus the message box | `Ctrl+Enter` in the message box, `Ctrl+K C` / `Ctrl+K Shift+M` |
 | Next / previous change in a diff, unified or split | `F7` / `Shift+F7`, `Ctrl+K V` |
 | Switch branch / commit history | `Ctrl+K B` / `Ctrl+K H` |
 | Settings / Keyboard Shortcuts / theme | `Ctrl+,` or `Ctrl+K ,` / `Ctrl+K Ctrl+S` or `Ctrl+K K` / `Ctrl+K Ctrl+T` |
@@ -116,7 +142,8 @@ views have more keys of their own; the command palette shows every command with 
 kitty keyboard protocol, such as Ghostty, kitty, WezTerm or foot; other terminals cannot send them.
 Every such command also has a `Ctrl+K` sequence that works in any terminal. Inside an embedded
 terminal (a shell or Claude Code), keys go to the program running there, so `Ctrl+P`, `Ctrl+R`,
-`Ctrl+C`, `Escape` and `Tab` behave as usual. The way out is the leader `Ctrl+\` followed by one
+`Ctrl+C`, `Escape` and `Tab` behave as usual. `Cmd+C` (macOS) and a terminal's own copy key only
+see the terminal's selection, which mouse reporting hides; use copy on select or `Ctrl+Shift+C`. The way out is the leader `Ctrl+\` followed by one
 key (`P` palette, `H` `J` `K` `L` focus, `E` `F` `G` views, `A` Claude Code, `T` terminal, `Q`
 quit); pressing `Ctrl+\` twice sends it to the program. `F1`, `F6` / `Shift+F6` and the kitty-only
 shortcuts above also keep working inside a terminal.
@@ -172,7 +199,9 @@ bun run bench         # performance measurements (docs/PERFORMANCE.md)
 Lucy works only on your machine and makes no network connections of its own; network traffic comes
 only from Git commands you trigger and from programs you run in its terminals. Every process is
 started without a shell, background Git commands run with hardened flags, and Lucy writes only to
-its own directories and, on your explicit action, to the opened folder. There is no workspace-trust
+its own directories and to files in the opened folder that you edit (auto save writes them without
+a separate confirmation). With tmux installed, a private tmux server keeps sessions running after
+Lucy quits (`terminal.persistence = "off"` turns it off). There is no workspace-trust
 prompt yet, and Git filter drivers in an untrusted repository can still run during a background
 `git status`. Read [docs/SECURITY.md](docs/SECURITY.md) before opening a repository you do not
 trust.

@@ -28,6 +28,8 @@ export interface TerminalPaneProps {
   name: string;
   onRestart: () => void;
   onClose: () => void;
+  /** The exit bar's restart action ("Continue session" for a restored agent session). */
+  restartLabel?: string;
 }
 
 /**
@@ -47,7 +49,15 @@ function whenAtBoundary(session: TerminalSession, apply: () => void): () => void
   return () => subscription.dispose();
 }
 
-export function TerminalPane({ session, visible, active, name, onRestart, onClose }: TerminalPaneProps) {
+export function TerminalPane({
+  session,
+  visible,
+  active,
+  name,
+  onRestart,
+  onClose,
+  restartLabel,
+}: TerminalPaneProps) {
   const app = useApp();
   const theme = useTheme();
   const density = useDensity();
@@ -177,6 +187,7 @@ export function TerminalPane({ session, visible, active, name, onRestart, onClos
           session={session}
           onRestart={onRestart}
           onClose={onClose}
+          restartLabel={restartLabel}
         />
       ) : null}
     </box>

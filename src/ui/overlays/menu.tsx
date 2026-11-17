@@ -7,6 +7,7 @@ import { isActionItem, type MenuItem } from "@/app/workbench/menus";
 import { displayWidth } from "@/core/text";
 import { Icon } from "../primitives/icon";
 import { formatKeys } from "../primitives/key-hint";
+import { CapCell } from "../primitives/shape";
 import { usePointer } from "../primitives/use-pointer";
 import { useTheme } from "../theme/theme-context";
 import { SIZE } from "../tokens/spacing";
@@ -61,32 +62,35 @@ function MenuRow({
         ? c.status.error
         : c.fg.default;
   return (
-    <box
-      height={1}
-      flexShrink={0}
-      flexDirection="row"
-      paddingX={1}
-      backgroundColor={active ? c.state.selectedBg : undefined}
-      {...pointer.props}
-    >
-      <text flexGrow={1} fg={fg} selectable={false}>
-        {checkColumn ? (
-          action.checked ? (
-            <Icon name="check" color={action.disabled ? c.fg.disabled : c.accent.primary} />
-          ) : (
-            "  "
-          )
-        ) : null}
-        {action.icon ? (
-          <Icon name={action.icon} color={action.disabled ? c.fg.disabled : c.fg.subtle} />
-        ) : null}
-        {action.label}
-      </text>
-      {keys ? (
-        <text flexShrink={0} fg={active ? c.fg.muted : c.fg.subtle} selectable={false}>
-          {`  ${keys}`}
+    // The highlighted item is a pill: caps take the place of the row's padding cells.
+    <box height={1} flexShrink={0} flexDirection="row" {...pointer.props}>
+      <CapCell side="left" color={active ? c.state.selectedBg : undefined} />
+      <box
+        flexGrow={1}
+        height={1}
+        flexDirection="row"
+        backgroundColor={active ? c.state.selectedBg : undefined}
+      >
+        <text flexGrow={1} fg={fg} selectable={false}>
+          {checkColumn ? (
+            action.checked ? (
+              <Icon name="check" color={action.disabled ? c.fg.disabled : c.accent.primary} />
+            ) : (
+              "  "
+            )
+          ) : null}
+          {action.icon ? (
+            <Icon name={action.icon} color={action.disabled ? c.fg.disabled : c.fg.subtle} />
+          ) : null}
+          {action.label}
         </text>
-      ) : null}
+        {keys ? (
+          <text flexShrink={0} fg={active ? c.fg.muted : c.fg.subtle} selectable={false}>
+            {`  ${keys}`}
+          </text>
+        ) : null}
+      </box>
+      <CapCell side="right" color={active ? c.state.selectedBg : undefined} />
     </box>
   );
 }

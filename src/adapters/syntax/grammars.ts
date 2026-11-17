@@ -50,7 +50,7 @@ export const GRAMMARS: readonly GrammarSpec[] = Object.freeze([
   },
   {
     filetype: "bash",
-    aliases: ["sh", "shell", "shellscript", "zsh", "ksh", "dotenv"],
+    aliases: ["sh", "shell", "shellscript", "zsh", "ksh"],
     packageName: "tree-sitter-bash",
     wasmUrl: () => import.meta.resolve("tree-sitter-bash/tree-sitter-bash.wasm"),
     queryUrl: () => new URL("./queries/bash.scm", import.meta.url),
@@ -85,7 +85,7 @@ export const GRAMMARS: readonly GrammarSpec[] = Object.freeze([
   },
   {
     filetype: "html",
-    aliases: ["htm", "xhtml", "xml", "svg"],
+    aliases: ["htm", "xhtml"],
     packageName: "tree-sitter-html",
     wasmUrl: () => import.meta.resolve("tree-sitter-html/tree-sitter-html.wasm"),
     queryUrl: () => new URL("./queries/html.scm", import.meta.url),

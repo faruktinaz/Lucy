@@ -87,6 +87,14 @@ describe("the flow", () => {
       "catppuccin-mocha",
       "tokyo-night",
       "gruvbox-dark",
+      "dracula",
+      "nord",
+      "one-dark",
+      "rose-pine",
+      "kanagawa-wave",
+      "everforest-dark",
+      "github-dark",
+      "solarized-dark",
       "high-contrast",
     ]);
 

@@ -6,9 +6,10 @@ import { configFilePath } from "@/core/config/load";
 import { settingsServices } from "@/features/settings";
 import type { ExternalEditorRunner } from "@/features/settings/config-file";
 import { createTestDirs, type MountedApp, mountApp } from "../helpers/app";
-import { fakeBin, normalizeFrame, withSettings } from "./helpers";
+import { fakeBin, hideAgentPanel, normalizeFrame, withSettings } from "./helpers";
 
 async function openSettings(app: MountedApp, query?: string): Promise<void> {
+  await hideAgentPanel(app);
   await app.tui.act(() => app.ctx.commands.execute("settings.open"));
   if (query) await app.tui.type(query);
 }
@@ -39,7 +40,7 @@ describe("Settings editor", () => {
     expect(frame).toContain("Color theme");
     expect(frame).toContain("ui.theme");
     expect(frame).toContain("Catppuccin Mocha");
-    expect(frame).toContain("44 settings");
+    expect(frame).toContain("50 settings");
     expect(frame).toContain("Saved in");
     expect(frame).toContain("never edits other tools' configuration");
   });
@@ -188,7 +189,7 @@ describe("config problems", () => {
   function brokenConfigDirs() {
     const dirs = createTestDirs();
     mkdirSync(dirs.config, { recursive: true });
-    writeFileSync(configFilePath(dirs), '[ui]\ntheme = "dracula"\ncolour = "red"\n');
+    writeFileSync(configFilePath(dirs), '[ui]\ntheme = "bogus"\ncolour = "red"\n');
     return dirs;
   }
 
@@ -197,11 +198,12 @@ describe("config problems", () => {
     const toast = app.ctx.notifications.toasts.find((t) => t.key === "config-problems");
     expect(toast?.title).toBe("2 settings in config.toml were ignored");
     expect(toast?.actions?.map((a) => a.label)).toEqual(["Show Problems"]);
+    await hideAgentPanel(app);
     await app.tui.act(() => toast?.actions?.[0]?.run());
     const frame = await app.tui.waitForText("2 problems in config.toml");
     expect(frame).toContain("Open config.toml");
     expect(frame).toContain("line 2");
-    expect(frame).toContain("dracula");
+    expect(frame).toContain("bogus");
   });
 
   test("Open config.toml uses the external editor outside the workspace, then reloads", async () => {

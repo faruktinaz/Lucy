@@ -38,7 +38,7 @@ describe("rows", () => {
   test("category headers followed by items, generated from the schema", async () => {
     const { vm } = await setup();
     const rows = vm.state.rows;
-    expect(rows[0]).toEqual({ type: "header", category: "Appearance", count: 6 });
+    expect(rows[0]).toEqual({ type: "header", category: "Appearance", count: 8 });
     const headers = rows
       .filter((r) => r.type === "header")
       .map((r) => (r.type === "header" ? r.category : ""));
@@ -54,7 +54,7 @@ describe("rows", () => {
       "Workspace",
       "Keyboard",
     ]);
-    expect(rows.filter((r) => r.type === "item")).toHaveLength(44);
+    expect(rows.filter((r) => r.type === "item")).toHaveLength(50);
     expect(vm.visibleRows(0, 3).map((r) => r.type)).toEqual(["header", "item", "item"]);
   });
 
@@ -100,7 +100,7 @@ describe("rows", () => {
     expect(vm.state.selectedPath).toBe("ui.theme");
     vm.moveSelection(-1);
     expect(vm.state.selectedPath).toBe("ui.theme");
-    vm.moveSelection(6);
+    vm.moveSelection(8);
     expect(vm.state.selectedPath).toBe("layout.sidebarSide");
     expect(vm.state.rows[vm.state.selectedIndex]?.type).toBe("item");
     vm.select("search.engine");
@@ -322,17 +322,17 @@ describe("persistence, preview and restart", () => {
 
 describe("config file problems and the file statement", () => {
   test("problems are listed with locations and attached to their rows", async () => {
-    const { vm } = await setup('[ui]\ntheme = "dracula"\ncolour = "red"\n');
+    const { vm } = await setup('[ui]\ntheme = "bogus"\ncolour = "red"\n');
     expect(vm.state.problems.map((p) => [p.severity, p.key, p.location])).toEqual([
       ["warning", "ui.theme", "config.toml:2:1"],
       ["warning", "ui.colour", "config.toml:3:1"],
     ]);
-    expect(item(vm, "ui.theme").problem).toContain("dracula");
+    expect(item(vm, "ui.theme").problem).toContain("bogus");
     expect(vm.state.file.hasSyntaxError).toBe(false);
   });
 
   test("open-config-file intent carries the path and position", async () => {
-    const { vm } = await setup('[ui]\ntheme = "dracula"\n');
+    const { vm } = await setup('[ui]\ntheme = "bogus"\n');
     const intents: SettingsIntent[] = [];
     vm.onIntent((i) => intents.push(i));
     const problem = vm.state.problems[0];

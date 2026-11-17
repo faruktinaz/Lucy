@@ -32,7 +32,7 @@ function DetailLines({ lines }: { lines: readonly string[] }) {
   const density = useDensity();
   if (lines.length === 0) return null;
   return (
-    <box flexDirection="column" paddingX={density.rowPaddingX} marginTop={1} flexShrink={0}>
+    <box flexDirection="column" paddingX={density.rowPaddingX + 1} marginTop={1} flexShrink={0}>
       {lines.map((line) => (
         <text key={line} fg={theme.colors.fg.subtle} selectable={false} wrapMode="word">
           {sanitizeForDisplay(line)}

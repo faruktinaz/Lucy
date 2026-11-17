@@ -8,6 +8,8 @@ import { defineScenario, type ScenarioContext, SIZES, until } from "../screensho
 export async function prepare(app: ScenarioContext): Promise<ExplorerController> {
   const controller = explorerControllerFor(app.ctx);
   if (!controller) throw new Error("The explorer feature did not activate");
+  // The demo has changes to review, so the default layout opens on Changes; show Files.
+  await app.tui.act(() => app.ctx.commands.execute("view.showExplorer"));
   await app.tui.act(() => controller.load());
   // A few folders open, a file selected and open in the editor.
   await app.tui.act(() => controller.model.reveal("src/server/routes/tasks.ts"));

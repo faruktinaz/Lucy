@@ -99,7 +99,8 @@ export function SearchRow({
   const pointer = usePointer({ onClick: onFocusRequest });
   return (
     <box height={1} flexShrink={0} flexDirection="row" paddingX={CANVAS_PADDING_X} gap={2}>
-      <box flexGrow={1} flexShrink={1} {...pointer.props}>
+      {/* minWidth 0 and clipping: a long placeholder must shrink, never run under the count. */}
+      <box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden" {...pointer.props}>
         <TextField
           ref={fieldRef}
           icon="search"

@@ -2,7 +2,17 @@
  * Public surface of the syntax layer: language detection, offline highlighting and the mapping
  * from highlight groups to theme tokens. Import from `@/adapters/syntax`.
  */
-export { FALLBACK_TOKENIZERS, type FallbackTokenizer, fallbackTokenizerFor } from "./fallback";
+export { COMPOSITE_FILETYPES, type EmbeddedRegion, findEmbeddedRegions } from "./embedded";
+export {
+  FALLBACK_TEXT_FILETYPE,
+  FALLBACK_TOKENIZERS,
+  type FallbackTokenizer,
+  fallbackTokenizerFor,
+  LANGUAGE_SPECS,
+  type LanguageKeywords,
+  type LanguageSpec,
+} from "./fallback";
+export { createSpecTokenizer, type ExtraRule, type StringRule } from "./fallback/spec-tokenizer";
 export {
   assertLocalSource,
   BUNDLED_FILETYPES,
@@ -10,6 +20,7 @@ export {
   type GrammarSpec,
   resolveGrammars,
 } from "./grammars";
+export { languageKeywords } from "./keywords";
 export {
   detectLanguage,
   interpreterFromShebang,
@@ -18,6 +29,7 @@ export {
   type LanguageInfo,
   languageById,
   PLAIN_TEXT,
+  UNKNOWN_TEXT,
 } from "./languages";
 export { LucyTreeSitterClient, type LucyTreeSitterClientOptions } from "./lucy-tree-sitter-client";
 export { configureOpenTuiDataPath } from "./opentui-data-path";

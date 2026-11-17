@@ -15,7 +15,7 @@ import { PanelHeader, SectionHeader } from "../primitives/headers";
 import { HighlightedText } from "../primitives/highlighted-text";
 import { FileIcon, Icon } from "../primitives/icon";
 import { formatKeys, KeyHint } from "../primitives/key-hint";
-import { List, rowBackground } from "../primitives/list";
+import { List, RowFrame, rowBackground } from "../primitives/list";
 import { Spinner } from "../primitives/spinner";
 import { EmptyState, ErrorState } from "../primitives/states";
 import { Tabs } from "../primitives/tabs";
@@ -235,15 +235,15 @@ function RowSamples() {
   return (
     <Section title="List and tree rows">
       {ROW_STATES.map((state) => {
-        const bg = rowBackground(theme, state, c.bg.surface);
+        const fill = rowBackground(theme, state);
         const active = state.selected && state.focused;
         return (
-          <box
+          <RowFrame
             key={state.label}
-            height={1}
-            flexDirection="row"
-            backgroundColor={bg}
-            paddingX={1}
+            fill={fill}
+            marker={theme.highContrast && state.selected}
+            focused={state.focused}
+            surface={theme.shell.panel}
             width={COLUMN}
           >
             <TreeRowContent
@@ -258,22 +258,15 @@ function RowSamples() {
                 selected: state.selected,
                 active,
                 hovered: state.hovered,
-                width: COLUMN - 2,
+                width: COLUMN - 4,
               }}
             />
-          </box>
+          </RowFrame>
         );
       })}
       <box height={1} />
       {tree.map((row) => (
-        <box
-          key={row.name}
-          height={1}
-          flexDirection="row"
-          backgroundColor={c.bg.surface}
-          paddingX={1}
-          width={COLUMN}
-        >
+        <RowFrame key={row.name} fill={undefined} surface={theme.shell.panel} width={COLUMN}>
           <TreeRowContent
             depth={row.depth}
             expandable={row.dir}
@@ -288,9 +281,9 @@ function RowSamples() {
             status={row.status}
             statusColor={row.color}
             strikethrough={row.status === "D"}
-            state={{ index: 0, selected: false, active: false, hovered: false, width: COLUMN - 2 }}
+            state={{ index: 0, selected: false, active: false, hovered: false, width: COLUMN - 4 }}
           />
-        </box>
+        </RowFrame>
       ))}
     </Section>
   );
@@ -353,12 +346,12 @@ function HeaderSamples() {
 
 function TabSamples() {
   const theme = useTheme();
-  const c = theme.colors;
+  const _c = theme.colors;
   return (
     <Section title="Tabs">
       <Tabs
         width={COLUMN}
-        surface={c.bg.surface}
+        surface={theme.shell.panel}
         activeId="b"
         focused
         items={[
@@ -372,7 +365,7 @@ function TabSamples() {
       <Tabs
         variant="panel"
         width={COLUMN}
-        surface={c.bg.surface}
+        surface={theme.shell.panel}
         activeId="t"
         items={[
           { id: "t", title: "Terminal" },

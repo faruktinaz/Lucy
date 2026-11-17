@@ -70,16 +70,23 @@ export function AuxiliaryPanel({
   const app = useApp();
   const theme = useTheme();
   return (
-    <ZoneBox zone="auxiliary" visible={visible} width={width} backgroundColor={theme.colors.bg.surface}>
+    <ZoneBox
+      zone="auxiliary"
+      visible={visible}
+      width={width}
+      backgroundColor={theme.shell.panel}
+      edge={
+        resizable ? (
+          <ResizeHandle
+            edge={side === "right" ? "left" : "right"}
+            size={() => app.layout.effective.get().auxiliary.width}
+            onResize={(size) => app.layout.setAuxiliaryWidth(size)}
+            hint={{ text: "Drag to resize the panel" }}
+          />
+        ) : null
+      }
+    >
       <AuxiliaryContent />
-      {resizable ? (
-        <ResizeHandle
-          edge={side === "right" ? "left" : "right"}
-          size={() => app.layout.effective.get().auxiliary.width}
-          onResize={(size) => app.layout.setAuxiliaryWidth(size)}
-          hint={{ text: "Drag to resize the panel" }}
-        />
-      ) : null}
     </ZoneBox>
   );
 }
@@ -101,7 +108,7 @@ function BottomHeader() {
     size: () => app.layout.effective.get().bottom.height,
     onResize: (height) => app.layout.setBottomHeight(height),
   });
-  const surface = drag.dragging ? theme.colors.state.hover : theme.colors.bg.surface;
+  const surface = drag.dragging ? theme.colors.state.hover : theme.shell.panel;
   return (
     <box
       height={1}
@@ -195,7 +202,7 @@ export function BottomPanel({
       visible={visible}
       height={maximized ? undefined : height}
       flexGrow={maximized ? 1 : undefined}
-      backgroundColor={theme.colors.bg.surface}
+      backgroundColor={theme.shell.panel}
     >
       <BottomHeader />
       <BottomContent />

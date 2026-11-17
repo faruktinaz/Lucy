@@ -7,7 +7,12 @@
 import { join } from "node:path";
 import { type AgentProvider, AgentSessionManager, createClaudeProvider } from "@/adapters/agents";
 import { FileOps, type WatchBatch, Watcher, type WatchFactory } from "@/adapters/filesystem";
-import { createGitAdapterFactory, type GitAdapterFactory, GitService } from "@/adapters/git";
+import {
+  createGitAdapterFactory,
+  type GitAdapterFactory,
+  GitRepositoryManager,
+  GitService,
+} from "@/adapters/git";
 import { type PtyProcess, PtyRegistry, type PtySpawnOptions, spawnPty } from "@/adapters/pty";
 import { ContentSearch, FileIndex } from "@/adapters/search";
 import { SyntaxService } from "@/adapters/syntax";
@@ -45,6 +50,7 @@ export interface DomainServicesOptions {
 
 export type DomainServiceName =
   | "git"
+  | "gitRepositories"
   | "fileIndex"
   | "contentSearch"
   | "syntax"
@@ -95,6 +101,22 @@ export class DomainServices implements Disposable {
             createGitAdapterFactory(this.options.workspace.root, { env: this.options.overrides?.toolEnv }),
         ),
     );
+  }
+
+  /**
+   * Every Git repository of the workspace: the primary `git` service plus repositories found
+   * below the workspace (`git.repositoryScanDepth`), one service each. Scanned after first paint.
+   */
+  get gitRepositories(): GitRepositoryManager {
+    return this.lazy("gitRepositories", () => {
+      const { config, workspace, overrides } = this.options;
+      return new GitRepositoryManager({
+        workspaceRoot: workspace.root,
+        primary: this.git,
+        createService: (root) => new GitService(createGitAdapterFactory(root, { env: overrides?.toolEnv })),
+        depth: () => config.get("git.repositoryScanDepth"),
+      });
+    });
   }
 
   /**
@@ -184,7 +206,12 @@ export class DomainServices implements Disposable {
       (error: unknown) => log.warn("Pruning the undo trash failed", { error }),
     );
     const gitEnabled = config.get("git.enabled");
+    // Created before the first refresh so listeners of the workspace's Git state find it; the
+    // repositories below the workspace are searched once the workspace's own status is in.
+    const repositories =
+      gitEnabled && config.get("git.repositoryScanDepth") > 0 ? this.gitRepositories : undefined;
     const gitReady = gitEnabled ? this.git.refresh() : Promise.resolve(null);
+    if (repositories) void gitReady.then(() => (this.disposed ? undefined : repositories.scan()));
     if (!config.get("workspace.watch")) return;
     void gitReady.then((state) => {
       if (this.disposed) return;
@@ -218,7 +245,16 @@ export class DomainServices implements Disposable {
         if (batch.overflow || batch.paths.length > 0) index?.invalidate();
         const { config } = this.options;
         if (this.created.has("git") && config.get("git.enabled") && config.get("git.autoRefresh")) {
-          this.git.scheduleRefresh();
+          // Only the repositories a batch touches refresh; without nested repositories this is
+          // the primary service, exactly as before.
+          const repositories = this.peek<GitRepositoryManager>("gitRepositories");
+          if (repositories) {
+            // A nested repository's own Git metadata changed: route its root like a path in it.
+            repositories.routeBatch([...batch.paths, ...(batch.nestedGitMeta ?? [])], {
+              overflow: batch.overflow,
+              primaryMetaChanged: batch.gitMetaChanged,
+            });
+          } else this.git.scheduleRefresh();
         }
         this.fileChanges.emit(batch);
       }),

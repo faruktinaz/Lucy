@@ -78,7 +78,7 @@ export function EmptyState({ title, description, actions = [], icon, align = "le
   return (
     <box
       flexDirection="column"
-      paddingX={align === "center" ? 2 : density.rowPaddingX}
+      paddingX={align === "center" ? 2 : density.rowPaddingX + 1}
       paddingTop={density.emptyStateTop}
       flexShrink={0}
     >
@@ -129,7 +129,7 @@ export function ErrorState({ title, message, actions = [] }: ErrorStateProps) {
   return (
     <box
       flexDirection="column"
-      paddingX={density.rowPaddingX}
+      paddingX={density.rowPaddingX + 1}
       paddingTop={density.emptyStateTop}
       flexShrink={0}
     >

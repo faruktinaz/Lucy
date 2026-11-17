@@ -4,10 +4,19 @@ import { join } from "node:path";
 import type { FeatureModule } from "@/app/feature";
 import { FEATURES } from "@/app/features";
 import { createSettingsFeature, type SettingsFeatureOptions } from "@/features/settings";
+import type { MountedApp } from "../helpers/app";
 
 /** The real feature list with the Settings feature configured for a test. */
 export function withSettings(options: SettingsFeatureOptions): readonly FeatureModule[] {
   return FEATURES.map((feature) => (feature.id === "settings" ? createSettingsFeature(options) : feature));
+}
+
+/**
+ * Closes the agent panel, which the review-first default layout opens at 120 columns. Tests of
+ * an editor's content use it so the editor has the width those tests were written for.
+ */
+export async function hideAgentPanel(app: MountedApp): Promise<void> {
+  await app.tui.act(() => app.ctx.layout.setAuxiliaryVisible(false));
 }
 
 /** A temporary PATH directory with fake executables (`name -> shell script body`). */

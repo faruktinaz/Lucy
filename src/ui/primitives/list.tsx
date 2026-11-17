@@ -20,7 +20,8 @@ import { useDensity, useTheme } from "../theme/theme-context";
 import type { UiTheme } from "../theme/ui-theme";
 import { useMeasure } from "./measure";
 import { Scrollbar } from "./scrollbar";
-import { usePointer } from "./use-pointer";
+import { CapCell } from "./shape";
+import { type PointerProps, usePointer } from "./use-pointer";
 
 export interface ListRowState {
   readonly index: number;
@@ -75,7 +76,6 @@ export function scrollToReveal(top: number, height: number, index: number, count
 }
 
 function ListRow({
-  slot,
   index,
   exists,
   selected,
@@ -119,30 +119,69 @@ function ListRow({
     },
   });
   const hovered = exists && pointer.hovered;
-  const bg = exists ? rowBackground(theme, { selected, focused, hovered }, surface) : surface;
-  const marker = theme.highContrast && selected && exists;
+  const fill = exists ? rowBackground(theme, { selected, focused, hovered }) : undefined;
   return (
-    <box
-      key={slot}
-      height={1}
-      flexShrink={0}
-      flexDirection="row"
-      backgroundColor={bg}
-      paddingLeft={marker ? 0 : paddingX}
-      paddingRight={paddingX}
+    <RowFrame
+      fill={fill}
+      marker={theme.highContrast && selected && exists}
+      focused={focused}
+      surface={surface}
+      paddingX={paddingX}
       width={width}
-      {...pointer.props}
+      pointer={pointer.props}
     >
+      {exists ? children(hovered) : null}
+    </RowFrame>
+  );
+}
+
+/**
+ * The shape of a list row: the highlight is a pill inset from the card edge (margin, cap,
+ * content, cap, margin). Exported for rows that are not inside a `List` (the gallery,
+ * section headers in custom lists).
+ */
+export function RowFrame({
+  fill,
+  marker = false,
+  focused = true,
+  surface,
+  paddingX = 1,
+  width,
+  pointer,
+  children,
+}: {
+  fill: RGBA | undefined;
+  /** High Contrast: a bar in the first cell, so selection never relies on color alone. */
+  marker?: boolean;
+  focused?: boolean;
+  surface?: RGBA;
+  paddingX?: number;
+  width?: number;
+  pointer?: Partial<PointerProps>;
+  children: ReactNode;
+}) {
+  const theme = useTheme();
+  return (
+    <box height={1} flexShrink={0} flexDirection="row" backgroundColor={surface} width={width} {...pointer}>
+      <box width={paddingX} height={1} flexShrink={0} />
       {marker ? (
         <text
+          width={1}
           fg={focused ? theme.colors.accent.primary : theme.colors.fg.muted}
+          bg={fill}
           selectable={false}
           flexShrink={0}
         >
-          {"▌".padEnd(paddingX, " ")}
+          ▌
         </text>
-      ) : null}
-      {exists ? children(hovered) : null}
+      ) : (
+        <CapCell side="left" color={fill} />
+      )}
+      <box flexGrow={1} height={1} flexDirection="row" backgroundColor={fill} minWidth={0}>
+        {children}
+      </box>
+      <CapCell side="right" color={fill} />
+      <box width={paddingX} height={1} flexShrink={0} />
     </box>
   );
 }
@@ -221,7 +260,8 @@ export function List<T>({
   );
 
   const rows: ReactNode[] = [];
-  const contentWidth = Math.max(0, size.width - density.rowPaddingX * 2);
+  // Margin and cap on each side of a row (see ListRow).
+  const contentWidth = Math.max(0, size.width - (density.rowPaddingX + 1) * 2);
   for (let slot = 0; slot < height; slot++) {
     const index = effectiveTop + slot;
     const item = items[index];

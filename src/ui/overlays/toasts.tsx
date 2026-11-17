@@ -6,6 +6,7 @@ import { useApp, useStore } from "@/app/react";
 import type { Notification } from "@/app/workbench/notifications";
 import { sanitizeForDisplay, truncateEnd } from "@/core/text";
 import { type IconName, icon } from "@/themes/icons";
+import { CardLip } from "../primitives/shape";
 import { attrs } from "../primitives/text";
 import { usePointer } from "../primitives/use-pointer";
 import { useDensity, useTheme } from "../theme/theme-context";
@@ -71,20 +72,15 @@ export function ToastCard({
   const edge = severityColor(theme, notification.severity);
   const actions = notification.actions ?? [];
   return (
-    <box width={width} flexDirection="row" backgroundColor={c.bg.raised} flexShrink={0} {...pointer.props}>
-      {/* A thin status-colored edge: a one-quarter block on every row. Absolute, so it
-          follows the card's height instead of setting it. */}
-      <box position="absolute" left={0} top={0} width={1} height="100%" overflow="hidden">
-        <text fg={edge} selectable={false}>
-          {"▎\n".repeat(16)}
-        </text>
-      </box>
+    // A small rounded card like every overlay; the severity shows in the icon's color.
+    <box width={width} flexDirection="column" flexShrink={0} {...pointer.props}>
+      {theme.shell.outline ? null : <CardLip edge="top" color={c.bg.raised} />}
       <box
-        flexGrow={1}
         flexDirection="column"
+        backgroundColor={c.bg.raised}
         paddingLeft={2}
         paddingRight={1}
-        paddingY={density.overlayPaddingY}
+        paddingY={theme.shell.outline ? density.overlayPaddingY : 0}
       >
         <box height={1} flexDirection="row" flexShrink={0}>
           <text flexGrow={1} fg={c.fg.default} selectable={false} wrapMode="none">
@@ -112,6 +108,7 @@ export function ToastCard({
           </box>
         ) : null}
       </box>
+      {theme.shell.outline ? null : <CardLip edge="bottom" color={c.bg.raised} />}
     </box>
   );
 }

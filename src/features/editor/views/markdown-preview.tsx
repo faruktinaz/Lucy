@@ -14,16 +14,18 @@ import { useSetting } from "./use-setting";
 
 export interface MarkdownPreviewProps {
   readonly document: TextDocument;
+  /** The edited buffer's text, when it differs from the document on disk. */
+  readonly content?: string;
   readonly focused: boolean;
 }
 
-export function MarkdownPreview({ document, focused }: MarkdownPreviewProps) {
+export function MarkdownPreview({ document, content: edited, focused }: MarkdownPreviewProps) {
   const app = useApp();
   const theme = useTheme();
   const c = theme.colors;
   const tabWidth = useSetting("editor.tabWidth");
   const scroll = useRef<ScrollBoxRenderable>(null);
-  const lines = documentLines(document);
+  const lines = edited === undefined ? documentLines(document) : edited.split("\n");
   // Same display safety as the source view: control characters become visible pictures.
   const content = useMemo(() => buildDisplayContent(lines, tabWidth), [lines, tabWidth]);
 

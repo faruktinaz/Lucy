@@ -271,9 +271,10 @@ if [[ -n "$NAME" ]]; then greet "$NAME"; fi
     expect: [
       ["# env", "comment"],
       ["export", "keyword"],
-      ["API_URL", "variable"],
+      ["API_URL", "property"],
       ['"https', "string"],
-      ["DEBUG", "variable"],
+      ["DEBUG", "property"],
+      ["1", "number"],
     ],
   },
   {
@@ -417,25 +418,27 @@ describe("offsets", () => {
 });
 
 describe("unknown and plain-text content", () => {
-  test("unknown languages and plain text give no ranges and no error", async () => {
+  test("unknown language ids and declared plain text give no ranges and no error", async () => {
     expect(await service.highlight("x = 1", "cobol")).toEqual([]);
     expect(await service.highlight("x = 1", "plaintext")).toEqual([]);
-    expect(await service.highlight("FROM node:22", "dockerfile")).toEqual([]);
     expect(await service.highlight("", "typescript")).toEqual([]);
     const direct = await service.client.highlightOnce("x", "cobol");
     expect(direct.highlights ?? []).toEqual([]);
     expect(direct.error).toBeUndefined();
   });
 
-  test("filetypeFor gives the <code> filetype, or undefined for plain text", () => {
+  test("filetypeFor gives the <code> filetype, or undefined for declared plain text", () => {
     expect(service.filetypeFor("src/a.py")).toBe("python");
     expect(service.filetypeFor("bin/tool", "#!/bin/zsh")).toBe("bash");
     expect(service.filetypeFor("tsconfig.json")).toBe("jsonc");
     expect(service.filetypeFor("Cargo.toml")).toBe("toml");
     expect(service.filetypeFor("App.tsx")).toBe("typescriptreact");
-    expect(service.filetypeFor("Dockerfile")).toBeUndefined();
+    expect(service.filetypeFor("Dockerfile")).toBe("dockerfile");
+    expect(service.filetypeFor(".env.example")).toBe("dotenv");
+    expect(service.filetypeFor("query.sql")).toBe("sql");
+    expect(service.filetypeFor("App.vue")).toBe("vue");
     expect(service.filetypeFor("notes.txt")).toBeUndefined();
-    expect(service.filetypeFor("a.cob")).toBeUndefined();
+    expect(service.filetypeFor("a.cob")).toBe("fallback-text");
     expect(service.languageFor(".zshrc").displayName).toBe("Shell Script");
   });
 

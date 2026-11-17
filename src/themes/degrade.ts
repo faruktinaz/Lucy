@@ -197,6 +197,32 @@ function isHueBearing(path: TokenPath): boolean {
   return HUE_BEARING_GROUPS.has(group) && !NEUTRAL_ROLES.has(path);
 }
 
+/** The canvas family: surfaces that stand for the terminal's own background. */
+const CANVAS_SURFACES = new Set<TokenPath>([
+  "bg.canvas",
+  "bg.base",
+  "bg.surface",
+  "bg.inset",
+  "editor.bg",
+  "terminal.bg",
+]);
+
+/**
+ * In 16-color mode the user's terminal defines the real colors, so a theme's canvas has to
+ * become the terminal's background entry and its body text the terminal's foreground
+ * entries, whatever their exact lightness. Matching by lightness alone sends a mid-dark
+ * base such as Nord's #2e3440 to ANSI 8 (a mid grey in most terminals) and a mid-light
+ * body text such as Solarized's base1 to ANSI 8 as well.
+ */
+function anchoredAnsi(theme: Theme, path: TokenPath, hex: string): number | undefined {
+  const dark = theme.appearance === "dark";
+  if (CANVAS_SURFACES.has(path)) return dark ? 0 : 15;
+  if (path === "fg.default" || path === "terminal.fg") {
+    return nearestAnsi16(hex, { role: "neutral", exclude: new Set(dark ? [0, 8] : [7, 15]) });
+  }
+  return undefined;
+}
+
 function paletteOf(mode: Exclude<ColorMode, "truecolor">): {
   hexOf: (i: number) => string;
   indexes: number[];
@@ -254,7 +280,8 @@ export function resolveTheme(theme: Theme, colorMode: ColorMode): ResolvedTheme 
 
   for (const path of tokenPaths()) {
     const hex = getToken(theme.tokens, path);
-    const fixedAnsi = colorMode === "16" ? terminalIndex.get(path) : undefined;
+    const fixedAnsi =
+      colorMode === "16" ? (terminalIndex.get(path) ?? anchoredAnsi(theme, path, hex)) : undefined;
     index.set(
       path,
       fixedAnsi ??

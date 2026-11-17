@@ -18,6 +18,14 @@ function pushValue(out: HighlightRange[], line: string, offset: number, from: nu
   const value = line.slice(start, end);
   const group = BOOLEAN.test(value) ? "boolean" : NUMBER.test(value) ? "number" : "string";
   out.push({ start: offset + start, end: offset + end, group });
+  // References such as `${base}/bin` (properties, EditorConfig-style tools) and `%(name)s` (Python configparser).
+  for (const match of value.matchAll(/\$\{[^}\n]+\}|%\([^)\n]+\)[sdif]?/g)) {
+    out.push({
+      start: offset + start + match.index,
+      end: offset + start + match.index + match[0].length,
+      group: "property",
+    });
+  }
 }
 
 /** Index of an inline comment (` #` or ` ;` outside quotes), or -1. */
@@ -45,7 +53,8 @@ export function tokenizeConf(text: string): HighlightRange[] {
     const indent = line.length - line.trimStart().length;
     const first = line[indent];
 
-    if (first === "#" || first === ";") {
+    // `!` starts a comment in Java .properties files.
+    if (first === "#" || first === ";" || first === "!") {
       out.push({ start: offset + indent, end: offset + line.length, group: "comment" });
     } else if (first === "[") {
       const close = line.indexOf("]", indent);

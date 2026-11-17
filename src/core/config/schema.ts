@@ -85,6 +85,7 @@ const BEHAVIOR_FLAGS: Readonly<Record<string, BehaviorFlags>> = {
   "ui.accent": { livePreview: true },
   "ui.density": { livePreview: true },
   "ui.icons": { livePreview: true },
+  "ui.cornerStyle": { livePreview: true },
   "ui.colorMode": { requiresRestart: true },
   "git.enabled": { requiresRestart: true },
   "workspace.watch": { requiresRestart: true },
@@ -215,6 +216,14 @@ const THEME_LABELS: Record<(typeof THEME_IDS)[number], string> = {
   "catppuccin-mocha": "Catppuccin Mocha",
   "tokyo-night": "Tokyo Night",
   "gruvbox-dark": "Gruvbox Dark",
+  dracula: "Dracula",
+  nord: "Nord",
+  "one-dark": "One Dark",
+  "rose-pine": "Rosé Pine",
+  "kanagawa-wave": "Kanagawa Wave",
+  "everforest-dark": "Everforest Dark",
+  "github-dark": "GitHub Dark",
+  "solarized-dark": "Solarized Dark",
   "high-contrast": "High Contrast",
 };
 
@@ -300,6 +309,25 @@ export const settingsSchema = withBehaviorFlags([
     ...appearance,
     title: "Animations",
     description: "Subtle transitions such as panel slides. Turn off for remote or slow terminals.",
+  }),
+  choice(
+    "ui.cornerStyle",
+    [
+      ["rounded", "Rounded"],
+      ["square", "Square"],
+    ],
+    "rounded",
+    {
+      ...appearance,
+      title: "Corner style",
+      description:
+        "Rounded draws panels, tabs, buttons and selections with soft corners (best with a Nerd Font). Square uses plain blocks.",
+    },
+  ),
+  bool("ui.copyOnSelect", true, {
+    ...appearance,
+    title: "Copy on select",
+    description: "Selecting text with the mouse copies it to the clipboard.",
   }),
   choice(
     "ui.colorMode",
@@ -419,6 +447,30 @@ export const settingsSchema = withBehaviorFlags([
     title: "Preview tabs",
     description: "Single-clicking a file reuses one preview tab until you edit or pin it.",
   }),
+  choice(
+    "editor.autosave",
+    [
+      ["afterDelay", "After a short delay"],
+      ["onFocusChange", "When the editor loses focus"],
+      ["off", "Off"],
+    ],
+    "afterDelay",
+    {
+      ...editor,
+      title: "Auto save",
+      description: "Save edited files automatically. With Off, save with Ctrl+S.",
+    },
+  ),
+  int(
+    "editor.autosaveDelayMs",
+    1000,
+    { min: 200, max: 60000, unit: "ms" },
+    {
+      ...editor,
+      title: "Auto save delay",
+      description: "How long after the last keystroke an edited file is saved.",
+    },
+  ),
 
   // [explorer]
   bool("explorer.showHidden", true, {
@@ -515,6 +567,17 @@ export const settingsSchema = withBehaviorFlags([
       description: "How long fetch, pull and push may run before they are stopped.",
     },
   ),
+  int(
+    "git.repositoryScanDepth",
+    3,
+    { min: 0, max: 6, unit: "levels" },
+    {
+      ...git,
+      title: "Repository scan depth",
+      description:
+        "How many folder levels below the workspace are searched for Git repositories. 0 only uses the workspace's own repository.",
+    },
+  ),
 
   // [ai]
   choice("ai.provider", [["claude", "Claude Code"]], "claude", {
@@ -574,6 +637,21 @@ export const settingsSchema = withBehaviorFlags([
     5000,
     { min: 100, max: 100000, unit: "lines" },
     { ...terminal, title: "Scrollback", description: "Lines kept in the terminal history." },
+  ),
+  choice(
+    "terminal.persistence",
+    [
+      ["auto", "Automatic (tmux when installed)"],
+      ["tmux", "tmux"],
+      ["off", "Off"],
+    ],
+    "auto",
+    {
+      ...terminal,
+      title: "Session persistence",
+      description:
+        "Keep terminal and AI sessions running when Lucy quits or is updated, and reattach to them on the next start. Uses a private tmux server; Off ends sessions with Lucy.",
+    },
   ),
 
   // [workspace]

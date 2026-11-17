@@ -43,6 +43,21 @@ Atuin, Git config or Claude Code files (`~/.claude/`, `~/.claude.json`). Git set
 passed per command with `-c`. The tool overview (`src/features/settings/model/integrations-model.ts`)
 only looks tools up on `PATH` and runs `<tool> --version`; Lucy never installs anything.
 
+**Background sessions through a private tmux server.** With `terminal.persistence` on `auto` (the
+default, when tmux 3.3 or newer is installed) or `tmux`, every terminal and Claude Code session runs
+in a tmux server of Lucy's own (`tmux -L <socket name>`, never your default server) started with a
+configuration file Lucy writes and passes with `-f`, so `~/.tmux.conf` is neither read nor changed
+(`src/adapters/pty/tmux.ts`). These sessions keep running after Lucy quits, by design: the programs
+in them (a shell, Claude Code) go on working and using your account's permissions until you end
+them. The terminal panel marks such sessions as persistent, "End Background Sessions" stops the
+workspace's sessions, and `terminal.persistence = "off"` turns this off so sessions end with Lucy.
+
+**Copying.** Copying text runs the platform clipboard tool with the text on stdin and no shell:
+`pbcopy` on macOS, `clip.exe` under WSL, `wl-copy`, `xclip` or `xsel` on Linux
+(`src/app/clipboard/clipboard-service.ts`). `wl-copy`, `xclip` and `xsel` leave a small process
+running that serves the clipboard, as they do when run from a shell. In an SSH session, or when no
+tool works, Lucy writes the text to your terminal as an OSC 52 escape sequence instead.
+
 **Where Lucy writes.** Directories follow the XDG Base Directory layout on macOS and Linux and can
 be overridden with `LUCY_CONFIG_DIR`, `LUCY_STATE_DIR`, `LUCY_CACHE_DIR` (`src/core/paths.ts`).
 
@@ -52,9 +67,10 @@ be overridden with `LUCY_CONFIG_DIR`, `LUCY_STATE_DIR`, `LUCY_CACHE_DIR` (`src/c
 | `~/.local/state/lucy/workspaces/<id>.json` | Per-folder restore state (section 5) | Debounced while you work, and on exit |
 | `~/.local/state/lucy/trash/<workspace-id>/` | Files and folders you deleted in Lucy, for undo | On delete |
 | `~/.local/state/lucy/onboarding.json` | "Onboarding done" marker | Once |
+| `~/.local/state/lucy/tmux/lucy.conf` | Configuration of Lucy's private tmux server (see above) | When the first persistent session starts |
 | `~/.local/state/lucy/logs/lucy.log` | Log file (planned; see section 5) | Not yet: no code calls `configureLogger` |
 | `~/.cache/lucy/tree-sitter/` | Empty `languages/` and `queries/` folders that OpenTUI's parser worker always creates | When highlighting starts |
-| The opened folder | Only on an explicit action: create, rename or delete in the explorer; a Git operation (stage, commit, discard, switch, stash, pull, ...); a save in your external editor; anything you or Claude Code do in a terminal | On that action |
+| The opened folder | Files you edit in Lucy's editor, saved by `Ctrl+S` or by auto save (`editor.autosave`, on by default: a short pause after typing, or when the editor loses focus), so an edit reaches the disk without a separate confirmation; create, rename or delete in the explorer; a Git operation (stage, commit, discard, switch, stash, pull, ...); a save in your external editor; anything you or Claude Code do in a terminal | On that action, or shortly after an edit |
 | System temp directory | `lucy --demo` builds a throwaway repository there and deletes only directories carrying its own ownership token (`src/app/demo/ownership.ts`) | Demo mode only |
 
 Background Git reads run with `GIT_OPTIONAL_LOCKS=0`, so they never take `index.lock` or rewrite the

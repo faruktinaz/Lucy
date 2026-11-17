@@ -43,6 +43,14 @@ describe("controlFor", () => {
       "Catppuccin Mocha",
       "Tokyo Night",
       "Gruvbox Dark",
+      "Dracula",
+      "Nord",
+      "One Dark",
+      "Rosé Pine",
+      "Kanagawa Wave",
+      "Everforest Dark",
+      "GitHub Dark",
+      "Solarized Dark",
       "High Contrast",
     ]);
   });

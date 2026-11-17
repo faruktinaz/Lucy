@@ -25,7 +25,7 @@ import { usePointer } from "@/ui/primitives/use-pointer";
 import { useTheme } from "@/ui/theme/theme-context";
 import type { UiTheme } from "@/ui/theme/ui-theme";
 import type { DiffAction, ScmController } from "../controller";
-import { diffSideLabel, diffTargetOf, isDiffTab } from "../diff-input";
+import { diffSideLabel, diffTargetOf } from "../diff-input";
 import {
   type DiffDocument,
   type DiffViewKind,
@@ -311,7 +311,9 @@ export function DiffEditorView({
   const app = useApp();
   const theme = useTheme();
   const c = theme.colors;
-  const git = controller.git;
+  // The tab's own repository (a workspace can hold several), not the active one.
+  const resolved = controller.resolveDiffTab(tab);
+  const git = resolved?.service ?? controller.git;
   const reloadToken = useStore(git.store, (state) => state.lastUpdated);
   const repoProblem = useStore(git.store, (state) => (state.repo ? null : state.error));
   const setting = useStore(app.config.store, () => app.config.get("git.defaultDiffView"));
@@ -319,9 +321,9 @@ export function DiffEditorView({
   const [attempt, setAttempt] = useState(0);
   const { size, onSizeChange } = useMeasure();
 
-  const valid = isDiffTab(tab);
-  const path = valid ? tab.resource : "";
-  const staged = tab.params.staged === true;
+  const valid = resolved !== null;
+  const path = resolved?.path ?? "";
+  const staged = resolved?.staged === true;
 
   // The tab object changes on every view-state write; only its identity, the Git refresh and
   // Retry decide when to reload.
@@ -412,7 +414,7 @@ export function DiffEditorView({
       app.notifications.info("The file was deleted", "There is no working-tree file to open.");
       return;
     }
-    controller.openFile(path, newLineAt(doc, layout, row));
+    controller.openFile(path, newLineAt(doc, layout, row), git);
   };
 
   const actions = useRef<(action: DiffAction) => void>(() => {});

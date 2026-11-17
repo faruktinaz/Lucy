@@ -186,9 +186,12 @@ describe("terminal-focus and input-focus policies", () => {
     expect(commandOf(withLetter.resolve(keyStroke("s")))).toBe("scm.stage");
   });
 
-  test("ctrl+w closes a tab, but not while typing in an input", () => {
+  test("ctrl+w closes a tab, also from the editor's edit surface, but not in other inputs", () => {
     expect(commandOf(registry.resolve(ctrl("w")))).toBe("editor.closeTab");
-    expect(commandOf(registry.resolve(ctrl("w"), { inputFocus: true }))).toBe("none");
+    expect(commandOf(registry.resolve(ctrl("w"), { inputFocus: true, editorFocus: true }))).toBe(
+      "editor.closeTab",
+    );
+    expect(commandOf(registry.resolve(ctrl("w"), { inputFocus: true, sidebarFocus: true }))).toBe("none");
   });
 });
 

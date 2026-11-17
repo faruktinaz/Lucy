@@ -41,6 +41,12 @@ export const EXTENDED_SYNTAX_TOKENS = [
   "list",
   "quote",
   "strikethrough",
+  // Diff and log roles: added/removed lines, and error/warning/info severities.
+  "inserted",
+  "deleted",
+  "error",
+  "warning",
+  "info",
 ] as const;
 
 export const SYNTAX_TOKENS = [...CORE_SYNTAX_TOKENS, ...EXTENDED_SYNTAX_TOKENS] as const;
@@ -62,6 +68,12 @@ export const SYNTAX_TOKEN_FALLBACKS: Readonly<Record<ExtendedSyntaxTokenName, Co
   list: "punctuation",
   quote: "comment",
   strikethrough: "comment",
+  // Chosen for hue across the four bundled themes: green, then the red/magenta family, orange, blue.
+  inserted: "string",
+  deleted: "keyword",
+  error: "keyword",
+  warning: "constant",
+  info: "function",
 };
 
 export interface SyntaxTextAttributes {
@@ -152,6 +164,11 @@ const GROUP_TOKEN_ENTRIES: readonly (readonly [string, SyntaxTokenName])[] = [
   ["markup.list.checked", "list"],
   ["markup.list.unchecked", "list"],
   ["markup.quote", "quote"],
+  ["diff.plus", "inserted"],
+  ["diff.minus", "deleted"],
+  ["comment.error", "error"],
+  ["comment.warning", "warning"],
+  ["comment.note", "info"],
 ];
 
 const GROUP_TOKEN_MAP: ReadonlyMap<string, SyntaxTokenName> = new Map(GROUP_TOKEN_ENTRIES);

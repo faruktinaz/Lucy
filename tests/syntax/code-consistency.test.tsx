@@ -107,6 +107,16 @@ fn main() { let v: Vec<u8> = Vec::new(); println!("{:?}", v); }`,
     `[package]\nname = "lucy" # n\nversion = "0.1.0"\n[dependencies]\nserde = { version = "1", features = ["derive"] }`,
   ],
   ["css", `.btn:hover > a, #id { color: #fff; margin: 0 4px !important; --gap: 2px; }`],
+  [
+    "sql",
+    "-- report\nSELECT u.id, COUNT(*) AS n FROM users u WHERE u.name = 'it''s' AND u.age > :min\nGROUP BY u.id; /* end */",
+  ],
+  ["dotenv", '# db\nDATABASE_URL=postgres://localhost/app\nDEBUG=true\nGREETING="Hi $USER\\n" # c'],
+  ["c", "#include <stdio.h>\nstatic int add(int a, int b) { return a + b; } // sum\nint x = MAX + 0x1F;"],
+  [
+    "vue",
+    '<template><div :class="x">{{ n }}</div></template>\n<script lang="ts">const n: number = 1;</script>\n<style>.x { color: red; }</style>',
+  ],
 ];
 
 describe("<code> colors match tokenizeLines", () => {

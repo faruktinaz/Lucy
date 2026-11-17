@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import {
   BUNDLED_FILETYPES,
+  COMPOSITE_FILETYPES,
   detectLanguage,
   FALLBACK_TOKENIZERS,
   GRAMMARS,
   interpreterFromShebang,
   LANGUAGES,
   languageById,
+  languageKeywords,
 } from "../../src/adapters/syntax";
 
 describe("detectLanguage", () => {
@@ -49,8 +51,8 @@ describe("detectLanguage", () => {
     ["BUILD.bazel", "starlark", "Starlark", "python"],
     ["defs.bzl", "starlark", "Starlark", "python"],
     ["main.go", "go", "Go", "go"],
-    ["go.mod", "go-module", "Go Module File", undefined],
-    ["go.sum", "go-sum", "Go Checksum File", undefined],
+    ["go.mod", "go-module", "Go Module File", "gomod"],
+    ["go.sum", "go-sum", "Go Checksum File", "fallback-text"],
     ["install.sh", "shell", "Shell Script", "bash"],
     ["x.bash", "shell", "Shell Script", "bash"],
     ["x.zsh", "shell", "Shell Script", "bash"],
@@ -60,25 +62,25 @@ describe("detectLanguage", () => {
     [".profile", "shell", "Shell Script", "bash"],
     [".envrc", "shell", "Shell Script", "bash"],
     ["PKGBUILD", "shell", "Shell Script", "bash"],
-    [".env", "dotenv", "Dotenv", "bash"],
-    [".env.local", "dotenv", "Dotenv", "bash"],
-    [".env.example", "dotenv", "Dotenv", "bash"],
+    [".env", "dotenv", "Dotenv", "dotenv"],
+    [".env.local", "dotenv", "Dotenv", "dotenv"],
+    [".env.example", "dotenv", "Dotenv", "dotenv"],
     ["main.rs", "rust", "Rust", "rust"],
     ["style.css", "css", "CSS", "css"],
     ["style.scss", "scss", "SCSS", "css"],
     ["style.less", "less", "Less", "css"],
     ["index.html", "html", "HTML", "html"],
     ["page.htm", "html", "HTML", "html"],
-    ["feed.xml", "xml", "XML", "html"],
-    ["icon.svg", "xml", "XML", "html"],
-    ["Dockerfile", "dockerfile", "Dockerfile", undefined],
-    ["Dockerfile.dev", "dockerfile", "Dockerfile", undefined],
-    ["Containerfile", "dockerfile", "Dockerfile", undefined],
-    ["app.dockerfile", "dockerfile", "Dockerfile", undefined],
-    ["Makefile", "makefile", "Makefile", undefined],
-    ["makefile", "makefile", "Makefile", undefined],
-    ["GNUmakefile", "makefile", "Makefile", undefined],
-    ["rules.mk", "makefile", "Makefile", undefined],
+    ["feed.xml", "xml", "XML", "xml"],
+    ["icon.svg", "xml", "XML", "xml"],
+    ["Dockerfile", "dockerfile", "Dockerfile", "dockerfile"],
+    ["Dockerfile.dev", "dockerfile", "Dockerfile", "dockerfile"],
+    ["Containerfile", "dockerfile", "Dockerfile", "dockerfile"],
+    ["app.dockerfile", "dockerfile", "Dockerfile", "dockerfile"],
+    ["Makefile", "makefile", "Makefile", "make"],
+    ["makefile", "makefile", "Makefile", "make"],
+    ["GNUmakefile", "makefile", "Makefile", "make"],
+    ["rules.mk", "makefile", "Makefile", "make"],
     ["setup.cfg", "ini", "INI", "ini"],
     ["tox.ini", "ini", "INI", "ini"],
     [".npmrc", "ini", "INI", "ini"],
@@ -92,13 +94,69 @@ describe("detectLanguage", () => {
     [".npmignore", "ignore", "Ignore", "gitignore"],
     [".git/info/exclude", "ignore", "Ignore", "gitignore"],
     [".gitattributes", "git-attributes", "Git Attributes", "gitignore"],
-    ["fix.patch", "diff", "Diff", undefined],
+    ["fix.patch", "diff", "Diff", "diff"],
     ["notes.txt", "plaintext", "Plain Text", undefined],
-    ["LICENSE", "plaintext", "Plain Text", undefined],
-    ["archive.unknownext", "plaintext", "Plain Text", undefined],
-    [".hidden", "plaintext", "Plain Text", undefined],
-    ["trailing.", "plaintext", "Plain Text", undefined],
+    ["LICENSE", "unknown", "Plain Text", "fallback-text"],
+    ["archive.unknownext", "unknown", "Plain Text", "fallback-text"],
+    [".hidden", "unknown", "Plain Text", "fallback-text"],
+    ["trailing.", "unknown", "Plain Text", "fallback-text"],
     ["C:\\work\\src\\app.ts", "typescript", "TypeScript", "typescript"],
+    [".env.production", "dotenv", "Dotenv", "dotenv"],
+    [".env_sample", "dotenv", "Dotenv", "dotenv"],
+    ["prod.env", "dotenv", "Dotenv", "dotenv"],
+    ["docker.env.example", "dotenv", "Dotenv", "dotenv"],
+    ["config/.env.test", "dotenv", "Dotenv", "dotenv"],
+    [".envrc", "shell", "Shell Script", "bash"],
+    ["db/schema.sql", "sql", "SQL", "sql"],
+    ["migrate.PGSQL", "sql", "SQL", "sql"],
+    ["main.c", "c", "C", "c"],
+    ["util.h", "c", "C", "c"],
+    ["main.cpp", "cpp", "C++", "cpp"],
+    ["vec.hpp", "cpp", "C++", "cpp"],
+    ["kernel.cu", "cpp", "C++", "cpp"],
+    ["AppDelegate.m", "objective-c", "Objective-C", "objc"],
+    ["Bridge.mm", "objective-cpp", "Objective-C++", "objc"],
+    ["Program.cs", "csharp", "C#", "csharp"],
+    ["Main.java", "java", "Java", "java"],
+    ["App.kt", "kotlin", "Kotlin", "kotlin"],
+    ["build.gradle.kts", "kotlin", "Kotlin", "kotlin"],
+    ["View.swift", "swift", "Swift", "swift"],
+    ["main.dart", "dart", "Dart", "dart"],
+    ["Main.scala", "scala", "Scala", "scala"],
+    ["build.sbt", "scala", "Scala", "scala"],
+    ["build.gradle", "groovy", "Groovy", "groovy"],
+    ["Jenkinsfile", "groovy", "Groovy", "groovy"],
+    ["app.rb", "ruby", "Ruby", "ruby"],
+    ["Gemfile", "ruby", "Ruby", "ruby"],
+    ["Rakefile", "ruby", "Ruby", "ruby"],
+    ["index.php", "php", "PHP", "php"],
+    ["init.lua", "lua", "Lua", "lua"],
+    ["script.pl", "perl", "Perl", "perl"],
+    ["analysis.R", "r", "R", "r"],
+    ["lib/app.ex", "elixir", "Elixir", "elixir"],
+    ["mix.exs", "elixir", "Elixir", "elixir"],
+    ["Main.hs", "haskell", "Haskell", "haskell"],
+    ["deploy.ps1", "powershell", "PowerShell", "powershell"],
+    ["schema.graphql", "graphql", "GraphQL", "graphql"],
+    ["api.proto", "protobuf", "Protocol Buffers", "proto"],
+    ["main.tf", "terraform", "Terraform", "hcl"],
+    ["prod.tfvars", "terraform", "Terraform", "hcl"],
+    ["job.hcl", "hcl", "HCL", "hcl"],
+    ["nginx.conf", "nginx", "Nginx", "nginx"],
+    ["/etc/nginx/conf.d/site.conf", "nginx", "Nginx", "nginx"],
+    ["/etc/nginx/sites-available/default", "nginx", "Nginx", "nginx"],
+    ["other.conf", "ini", "INI", "ini"],
+    ["app.service", "ini", "INI", "ini"],
+    ["App.vue", "vue", "Vue", "vue"],
+    ["Card.svelte", "svelte", "Svelte", "svelte"],
+    ["build.zig", "zig", "Zig", "zig"],
+    ["data.csv", "csv", "CSV", "csv"],
+    ["data.tsv", "tsv", "TSV", "tsv"],
+    ["server.log", "log", "Log", "log"],
+    ["server.log.3", "log", "Log", "log"],
+    [".git/COMMIT_EDITMSG", "git-commit", "Git Commit Message", "gitcommit"],
+    ["MERGE_MSG", "git-commit", "Git Commit Message", "gitcommit"],
+    [".git/rebase-merge/git-rebase-todo", "git-rebase", "Git Rebase", "gitrebase"],
   ];
 
   test.each(table)("%s → %s", (path, id, displayName, filetype) => {
@@ -109,7 +167,7 @@ describe("detectLanguage", () => {
   });
 
   test("file names are case-sensitive, so a script named `build` is not Starlark", () => {
-    expect(detectLanguage("scripts/build").id).toBe("plaintext");
+    expect(detectLanguage("scripts/build").id).toBe("unknown");
     expect(detectLanguage("scripts/build", "#!/usr/bin/env bash").id).toBe("shell");
   });
 
@@ -124,9 +182,18 @@ describe("detectLanguage", () => {
       ["#!/usr/bin/env -u FOO node", "javascript"],
       ["#!/usr/bin/env LANG=C bun", "typescript"],
       ["#!/usr/bin/env -S deno run --allow-read", "typescript"],
-      ["#!/usr/bin/env ruby", "plaintext"],
-      ["# not a shebang", "plaintext"],
-      ["", "plaintext"],
+      ["#!/usr/bin/env ruby", "ruby"],
+      ["#!/usr/bin/php", "php"],
+      ["#!/usr/bin/env perl -w", "perl"],
+      ["#!/usr/bin/env lua5.4", "lua"],
+      ["#!/usr/bin/env Rscript", "r"],
+      ["#!/usr/bin/env elixir", "elixir"],
+      ["#!/usr/bin/env runhaskell", "haskell"],
+      ["#!/usr/bin/env pwsh", "powershell"],
+      ["#!/usr/bin/make -f", "makefile"],
+      ["#!/usr/bin/env tclsh", "unknown"],
+      ["# not a shebang", "unknown"],
+      ["", "unknown"],
     ];
     for (const [line, id] of cases)
       expect(`${line} → ${detectLanguage("bin/tool", line).id}`).toBe(`${line} → ${id}`);
@@ -153,7 +220,7 @@ describe("registry", () => {
   });
 
   test("every filetype in the registry has a grammar, a bundled grammar or a fallback tokenizer", () => {
-    const known = new Set<string>(BUNDLED_FILETYPES);
+    const known = new Set<string>([...BUNDLED_FILETYPES, ...COMPOSITE_FILETYPES]);
     for (const grammar of GRAMMARS) {
       known.add(grammar.filetype);
       for (const alias of grammar.aliases) known.add(alias);
@@ -166,6 +233,38 @@ describe("registry", () => {
       if (language.filetype !== undefined)
         expect(`${language.id}:${known.has(language.filetype)}`).toBe(`${language.id}:true`);
     }
+  });
+
+  test("every language except declared plain text has a highlighter", () => {
+    const uncolored = LANGUAGES.filter((language) => language.filetype === undefined).map((l) => l.id);
+    expect(uncolored).toEqual(["plaintext"]);
+  });
+
+  test("keyword lists are exported per language, case-insensitive where the language is", () => {
+    const sql = languageKeywords("sql");
+    expect(sql?.caseInsensitive).toBe(true);
+    expect(sql?.keywords).toContain("select");
+    expect(sql?.types).toContain("varchar");
+    expect(languageKeywords("csharp")?.keywords).toContain("namespace");
+    expect(languageKeywords("objective-c")?.constants).toContain("YES");
+    expect(languageKeywords("terraform")?.keywords).toContain("resource");
+    expect(languageKeywords("makefile")).toBeDefined();
+    for (const id of [
+      "c",
+      "cpp",
+      "java",
+      "kotlin",
+      "swift",
+      "ruby",
+      "php",
+      "lua",
+      "go-module",
+      "dockerfile",
+    ]) {
+      expect(`${id}: ${(languageKeywords(id)?.keywords.length ?? 0) > 0}`).toBe(`${id}: true`);
+    }
+    expect(languageKeywords("python")).toBeUndefined();
+    expect(languageKeywords("cobol")).toBeUndefined();
   });
 
   test("every required language is highlighted", () => {

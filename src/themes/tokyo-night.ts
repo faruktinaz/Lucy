@@ -57,6 +57,7 @@ export const tokyoNight = defineTheme({
   defaultAccent: "blue",
   build: (accent) => ({
     bg: {
+      canvas: inset,
       base: p.bg,
       surface: p.bgDark,
       raised: p.bgHighlight,

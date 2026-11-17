@@ -23,9 +23,15 @@
 import { copyFileSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
-import { CodeRenderable, type Renderable } from "@opentui/core";
+import { CodeRenderable, type Renderable, TextareaRenderable } from "@opentui/core";
 import { buildDemoWorkspace, type DemoWorkspace } from "@/app/demo";
 import { THEME_IDS, type ThemeId } from "@/themes";
+import {
+  DEMO_AGENT_TRANSCRIPT,
+  fakeProvider,
+  scriptedSpawn,
+  shellScript,
+} from "../tests/ai-ui/support/scripted-pty";
 import { type MountAppOptions, type MountedApp, mountApp } from "../tests/helpers/app";
 import { saveScreenshot } from "./screenshot";
 
@@ -100,13 +106,35 @@ export async function until(app: MountedApp, predicate: () => boolean, timeoutMs
   await app.tui.settle();
 }
 
-/** Visible code views with a language, whose syntax colors come from the highlighter worker. */
-function highlightableCodeViews(app: MountedApp): CodeRenderable[] {
-  const found: CodeRenderable[] = [];
+/** A view whose syntax colors arrive asynchronously. */
+interface HighlightedView {
+  readonly view: Renderable;
+  /** Read-only `<code>` views report when the worker is busy; the edit surface does not. */
+  busy(): boolean;
+  /** Languages are known for `<code>` views; the edit surface may hold plain text. */
+  readonly mayStayPlain: boolean;
+}
+
+/**
+ * Visible code: read-only `<code>` views with a language, and the editor's edit surface (a
+ * `TextareaRenderable` whose highlights are applied after a short pause, so a capture taken
+ * too early shows uncolored code). Small textareas (the commit message) are not code.
+ */
+function highlightableViews(app: MountedApp): HighlightedView[] {
+  const found: HighlightedView[] = [];
   const walk = (node: Renderable) => {
     if (!node.visible) return;
     if (node instanceof CodeRenderable) {
-      if (node.filetype && node.content.trim() !== "" && node.width > 0 && node.height > 0) found.push(node);
+      if (node.filetype && node.content.trim() !== "" && node.width > 0 && node.height > 0) {
+        const code = node;
+        found.push({ view: code, busy: () => code.isHighlighting, mayStayPlain: false });
+      }
+      return;
+    }
+    if (node instanceof TextareaRenderable) {
+      if (node.height > 3 && node.width > 0 && node.plainText.trim() !== "") {
+        found.push({ view: node, busy: () => false, mayStayPlain: true });
+      }
       return;
     }
     for (const child of node.getChildren()) walk(child);
@@ -115,8 +143,8 @@ function highlightableCodeViews(app: MountedApp): CodeRenderable[] {
   return found;
 }
 
-/** Distinct foreground colors of the non-blank cells inside a code view. */
-function colorsInside(app: MountedApp, view: CodeRenderable): number {
+/** Distinct foreground colors of the non-blank cells inside a view. */
+function colorsInside(app: MountedApp, view: Renderable): number {
   const frame = app.tui.spans();
   const colors = new Set<string>();
   const left = view.screenX;
@@ -133,17 +161,27 @@ function colorsInside(app: MountedApp, view: CodeRenderable): number {
 
 /**
  * Waits until every visible code view shows its syntax colors. Highlighting runs in a worker
- * (cold start about 250 ms), so a fixed delay is either slow or flaky, and a color count over
- * the whole frame cannot tell (the chrome is colored anyway). This looks at each code view's
- * own cells: done when its highlighter is idle and the code shows at least three colors.
+ * (cold start about 250 ms) or after the edit surface's pause, so a fixed delay is either slow
+ * or flaky, and a color count over the whole frame cannot tell (the chrome is colored anyway).
+ * This looks at each view's own cells: done when it is idle and shows at least three colors.
+ * An edit surface may hold plain text, so it is accepted after `plainAfterMs` without colors.
  * Without a code view on screen it returns at once. The runner calls it before every capture.
  */
-export async function untilHighlighted(app: MountedApp, timeoutMs = 8000): Promise<void> {
+export async function untilHighlighted(
+  app: MountedApp,
+  timeoutMs = 8000,
+  plainAfterMs = 2000,
+): Promise<void> {
+  const started = performance.now();
   const done = () =>
-    highlightableCodeViews(app).every((view) => !view.isHighlighting && colorsInside(app, view) >= 3);
-  const deadline = performance.now() + timeoutMs;
+    highlightableViews(app).every(
+      (entry) =>
+        !entry.busy() &&
+        (colorsInside(app, entry.view) >= 3 ||
+          (entry.mayStayPlain && performance.now() - started > plainAfterMs)),
+    );
   while (!done()) {
-    if (performance.now() > deadline) throw new Error("Timed out waiting for syntax highlighting");
+    if (performance.now() - started > timeoutMs) throw new Error("Timed out waiting for syntax highlighting");
     await app.tui.advance(20);
   }
   await app.tui.settle();
@@ -283,7 +321,7 @@ async function openFiles(
 /** The workbench's own scenarios. Registered at run time, never on import. */
 function registerBuiltInScenarios(): void {
   defineScenario("shell", () => {}, {
-    description: "The default shell: Explorer, Welcome, status bar with Git",
+    description: "The default shell: review-first layout (Changes, Welcome, agent panel)",
     themes: [...THEME_IDS],
   });
 
@@ -293,27 +331,44 @@ function registerBuiltInScenarios(): void {
     mount: { settings: { "ui.density": "compact" } },
   });
 
+  defineScenario("shell-square", () => {}, {
+    description: "ui.cornerStyle = square: plain blocks instead of soft corners and round caps",
+    sizes: [SIZES.wide, SIZES.medium],
+    mount: { settings: { "ui.cornerStyle": "square" } },
+  });
+
   defineScenario("shell-unicode-icons", () => {}, {
     description: "The default icon tier (no Nerd Font required)",
     sizes: [SIZES.wide],
     mount: { settings: { "ui.icons": "unicode" } },
   });
 
+  // A scripted agent session and a scripted shell: the harness's own defaults would show "no
+  // agent configured" and "PTYs are disabled", which is not what the workbench looks like.
+  const workbenchSpawn = scriptedSpawn((options) =>
+    options.argv[0] === "demo-agent" ? { start: DEMO_AGENT_TRANSCRIPT } : shellScript("zsh"),
+  );
   defineScenario(
     "workbench",
     async (app) => {
       await openFiles(app, ["README.md", "src/main.ts", "package.json"]);
       await openFiles(app, ["CHANGELOG.md"], { preview: true });
+      await app.tui.act(() => app.ctx.commands.execute("ai.newSession"));
+      await until(app, () => app.tui.frame().includes("Apply the change"));
+      await app.tui.act(() => app.ctx.commands.execute("terminal.toggle"));
+      await until(app, () => app.tui.frame().includes("12 pass"));
       await app.tui.act(() => {
-        app.ctx.layout.setBottomVisible(true);
-        app.ctx.layout.setAuxiliaryVisible(true);
         app.ctx.layout.showSidebarView("scm");
         app.ctx.focus.focus("editor");
       });
     },
     {
-      description:
-        "Every region: tabs (one preview), breadcrumb, bottom panel, AI panel, Source Control badge",
+      description: "Every region: tabs (one preview), Changes, an agent session and a shell",
+      mount: {
+        ptySpawn: workbenchSpawn.spawn,
+        agentProviders: [fakeProvider()],
+        settings: { "terminal.shell": "/bin/zsh", "terminal.persistence": "off" },
+      },
     },
   );
 

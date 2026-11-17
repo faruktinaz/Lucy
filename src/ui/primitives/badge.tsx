@@ -4,6 +4,7 @@
  * filled block would be noise.
  */
 import { useTheme } from "../theme/theme-context";
+import { CapSpan } from "./shape";
 import { Span, type TextTone } from "./text";
 
 /** Formats a count to at most `width` cells (`1.2k`, `99+`). */
@@ -19,9 +20,13 @@ export function Badge({ count, width = 3 }: { count: number; width?: number }) {
   const theme = useTheme();
   if (count <= 0) return null;
   return (
-    <Span color={theme.colors.badge.fg} bg={theme.colors.badge.bg} bold>
-      {` ${formatCount(count, width)} `}
-    </Span>
+    <>
+      <CapSpan side="left" color={theme.colors.badge.bg} />
+      <Span color={theme.colors.badge.fg} bg={theme.colors.badge.bg} bold>
+        {formatCount(count, width)}
+      </Span>
+      <CapSpan side="right" color={theme.colors.badge.bg} />
+    </>
   );
 }
 

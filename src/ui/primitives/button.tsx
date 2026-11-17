@@ -9,6 +9,7 @@ import type { IconName } from "@/themes/icons";
 import { useTheme } from "../theme/theme-context";
 import type { UiTheme } from "../theme/ui-theme";
 import { Icon } from "./icon";
+import { CapCell } from "./shape";
 import { attrs } from "./text";
 import { usePointer } from "./use-pointer";
 
@@ -73,12 +74,17 @@ export function Button({
   };
   const { fg, bg } = buttonColors(theme, variant, state);
   const emphasis = state.focused || (variant !== "ghost" && state.hovered);
+  // A pill: the caps take the place of the outer padding cells, so widths are unchanged.
   return (
-    <box height={1} flexShrink={0} paddingX={2} backgroundColor={bg} {...pointer.props}>
-      <text fg={fg} attributes={attrs({ bold: emphasis, underline: state.focused })} selectable={false}>
-        {icon ? <Icon name={icon} color={fg} /> : null}
-        {label}
-      </text>
+    <box height={1} flexShrink={0} flexDirection="row" {...pointer.props}>
+      <CapCell side="left" color={bg} />
+      <box height={1} paddingX={1} backgroundColor={bg}>
+        <text fg={fg} attributes={attrs({ bold: emphasis, underline: state.focused })} selectable={false}>
+          {icon ? <Icon name={icon} color={fg} /> : null}
+          {label}
+        </text>
+      </box>
+      <CapCell side="right" color={bg} />
     </box>
   );
 }
@@ -112,11 +118,15 @@ export function IconButton({
   const c = theme.colors;
   const fg = disabled ? c.fg.disabled : active || hovered ? c.fg.default : c.fg.subtle;
   const bg = pointer.pressed ? c.state.active : hovered && !disabled ? c.state.hover : surface;
+  // Hover draws a small round pill around the icon (caps on either side).
+  const fill = bg === surface ? undefined : bg;
   return (
-    <box height={1} width={3} flexShrink={0} backgroundColor={bg} justifyContent="center" {...pointer.props}>
-      <text fg={fg} selectable={false}>
+    <box height={1} width={3} flexShrink={0} flexDirection="row" backgroundColor={surface} {...pointer.props}>
+      <CapCell side="left" color={fill} />
+      <text fg={fg} bg={fill} selectable={false} width={1}>
         <Icon name={icon} color={fg} space={false} />
       </text>
+      <CapCell side="right" color={fill} />
     </box>
   );
 }

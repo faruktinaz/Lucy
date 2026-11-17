@@ -7,6 +7,7 @@ import { type Ref, useImperativeHandle, useRef } from "react";
 import type { IconName } from "@/themes/icons";
 import { useTheme } from "../theme/theme-context";
 import { Icon } from "./icon";
+import { CapCell } from "./shape";
 
 export interface TextFieldHandle {
   focus(): void;
@@ -67,38 +68,34 @@ export function TextField({
   const framed = inset && theme.highContrast;
   const edgeColor = invalid ? c.status.error : focused ? c.border.focus : c.border.default;
   return (
-    <box
-      height={1}
-      flexDirection="row"
-      backgroundColor={bg}
-      paddingX={framed ? 0 : 1}
-      width={width}
-      flexShrink={0}
-    >
-      {framed ? <FieldEdge side="left" color={edgeColor} height={1} /> : null}
-      {icon ? (
-        <text fg={iconColor} selectable={false} flexShrink={0}>
-          <Icon name={icon} color={iconColor} />
-        </text>
-      ) : null}
-      <input
-        ref={input}
-        flexGrow={1}
-        value={value}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        focused={focused}
-        backgroundColor={bg ?? c.bg.base}
-        focusedBackgroundColor={bg ?? c.bg.base}
-        textColor={c.fg.default}
-        focusedTextColor={c.fg.default}
-        placeholderColor={c.fg.subtle}
-        cursorColor={c.accent.primary}
-        selectionBg={c.editor.selectionBg}
-        onInput={onInput}
-        onSubmit={onSubmit}
-      />
-      {framed ? <FieldEdge side="right" color={edgeColor} height={1} /> : null}
+    <box height={1} flexDirection="row" paddingX={0} width={width} flexShrink={0}>
+      {/* A pill: caps in the field color replace the padding cells (High Contrast keeps its frame). */}
+      {framed ? <FieldEdge side="left" color={edgeColor} height={1} /> : <CapCell side="left" color={bg} />}
+      <box height={1} flexDirection="row" flexGrow={1} backgroundColor={bg} minWidth={0}>
+        {icon ? (
+          <text fg={iconColor} selectable={false} flexShrink={0}>
+            <Icon name={icon} color={iconColor} />
+          </text>
+        ) : null}
+        <input
+          ref={input}
+          flexGrow={1}
+          value={value}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          focused={focused}
+          backgroundColor={bg ?? c.bg.base}
+          focusedBackgroundColor={bg ?? c.bg.base}
+          textColor={c.fg.default}
+          focusedTextColor={c.fg.default}
+          placeholderColor={c.fg.subtle}
+          cursorColor={c.accent.primary}
+          selectionBg={c.editor.selectionBg}
+          onInput={onInput}
+          onSubmit={onSubmit}
+        />
+      </box>
+      {framed ? <FieldEdge side="right" color={edgeColor} height={1} /> : <CapCell side="right" color={bg} />}
     </box>
   );
 }

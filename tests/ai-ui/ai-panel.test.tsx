@@ -20,7 +20,8 @@ async function mountAgent(options: Parameters<typeof fakeProvider>[0] = {}, sett
   const app = await mountApp({
     ptySpawn: spawn.spawn,
     agentProviders: [provider],
-    settings,
+    // The scripted PTY stands in for the real process; persistence has its own tests.
+    settings: { "terminal.persistence": "off", ...settings },
     width: 140,
     height: 40,
   });
@@ -152,6 +153,7 @@ describe("AI panel", () => {
     const { tui, ctx } = await mountApp({
       ptySpawn: spawn.spawn,
       agentProviders: [fakeProvider()],
+      settings: { "terminal.persistence": "off" },
       onQuit: () => {
         quit++;
       },

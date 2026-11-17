@@ -17,7 +17,10 @@ async function waitFor(tui: { advance(ms: number): Promise<void> }, predicate: (
 
 async function mountShell() {
   const spawn = scriptedSpawn(() => shellScript("zsh"));
-  const app = await mountApp({ ptySpawn: spawn.spawn, settings: { "terminal.shell": "/bin/zsh" } });
+  const app = await mountApp({
+    ptySpawn: spawn.spawn,
+    settings: { "terminal.shell": "/bin/zsh", "terminal.persistence": "off" },
+  });
   const open = async () => {
     await app.tui.act(() => app.ctx.commands.execute("terminal.toggle"));
     await waitFor(app.tui, () => app.tui.frame().includes("12 pass"));
@@ -98,7 +101,11 @@ describe("Terminal panel", () => {
   test("a real short-lived PTY runs through the real component", async () => {
     const { tui, ctx } = await mountApp({
       ptySpawn: spawnPty,
-      settings: { "terminal.shell": "/bin/sh", "terminal.args": ["-c", "printf 'real-pty-ok\\n'; exit 3"] },
+      settings: {
+        "terminal.persistence": "off",
+        "terminal.shell": "/bin/sh",
+        "terminal.args": ["-c", "printf 'real-pty-ok\\n'; exit 3"],
+      },
     });
     await tui.act(() => ctx.commands.execute("terminal.toggle"));
     await tui.waitForText("real-pty-ok", { timeoutMs: 5000 });

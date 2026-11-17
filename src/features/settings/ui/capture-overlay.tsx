@@ -101,7 +101,9 @@ function CaptureCard({
   const messages: { key: string; tone: "error" | "warning" | "muted"; text: string }[] = [];
   if (capture.phase === "review") {
     if (capture.refusal) messages.push({ key: "refusal", tone: "error", text: capture.refusal });
-    for (const conflict of capture.conflicts) {
+    // A refused chord cannot be saved, so advice about replacing or keeping both would only
+    // contradict the refusal (Ctrl+C, for example, is also the editor's Copy).
+    for (const conflict of capture.refusal ? [] : capture.conflicts) {
       messages.push({
         key: `conflict-${conflict.command}`,
         tone: "warning",

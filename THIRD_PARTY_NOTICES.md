@@ -218,6 +218,14 @@ licenses below are taken from `src/themes/README.md` and are **unverified**.
 | Catppuccin Mocha | Catppuccin palette, github.com/catppuccin/palette | MIT, (c) Catppuccin |
 | Tokyo Night | github.com/enkia/tokyo-night-vscode-theme (original palette); "night" values as in github.com/folke/tokyonight.nvim | MIT (enkia); Apache-2.0 (folke) |
 | Gruvbox Dark | github.com/morhetz/gruvbox | MIT, (c) Pavel Pertsev |
+| Dracula | Dracula specification, draculatheme.com/spec (github.com/dracula/dracula-theme) | MIT, (c) Dracula Theme |
+| Nord | Nord palette, github.com/nordtheme/nord; comment color from github.com/nordtheme/visual-studio-code | MIT, (c) Arctic Ice Studio & Sven Greb |
+| One Dark | Atom One Dark UI and syntax themes, github.com/atom/atom; comment color from github.com/Binaryify/OneDark-Pro | MIT, (c) GitHub Inc.; MIT (One Dark Pro) |
+| Rosé Pine | Rosé Pine palette, github.com/rose-pine/rose-pine-theme | MIT, (c) Rosé Pine |
+| Kanagawa Wave | github.com/rebelot/kanagawa.nvim | MIT, (c) Tommaso Laurenzi |
+| Everforest Dark | github.com/sainnhe/everforest | MIT, (c) sainnhe |
+| GitHub Dark | github.com/primer/primitives; github.com/primer/github-vscode-theme | MIT, (c) GitHub Inc. |
+| Solarized Dark | Solarized, github.com/altercation/solarized | MIT, (c) Ethan Schoonover |
 | High Contrast | Original to Lucy | Lucy's own license |
 
 ## 7. External programs Lucy can launch but does not ship

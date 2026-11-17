@@ -2,9 +2,10 @@
 import { describe, expect, test } from "bun:test";
 import { settingsServices } from "@/features/settings";
 import { type MountedApp, mountApp } from "../helpers/app";
-import { normalizeFrame } from "./helpers";
+import { hideAgentPanel, normalizeFrame } from "./helpers";
 
 async function openShortcuts(app: MountedApp, query?: string): Promise<void> {
+  await hideAgentPanel(app);
   await app.tui.act(() => app.ctx.commands.execute("keybindings.open"));
   if (query) await app.tui.type(query);
 }

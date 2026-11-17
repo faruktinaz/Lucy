@@ -5,7 +5,7 @@
  *   attached to the content below; inactive tabs are muted on the surface. A fixed two-cell
  *   slot after the title holds the dirty dot, or a close button on hover, so tabs never
  *   change width. Preview tabs are italic.
- * - `panel`: uppercase titles for the bottom panel; the active one is bold default text.
+ * - `panel`: titles for the bottom panel; the active one is a bold pill.
  *
  * Overflow: tabs that do not fit are hidden (the active tab is always visible) and a quiet
  * `+N` button at the end lists them.
@@ -15,6 +15,7 @@ import type { ReactNode } from "react";
 import { displayWidth, sanitizeForDisplay, truncateEnd } from "@/core/text";
 import { icon } from "@/themes/icons";
 import { useDensity, useTheme } from "../theme/theme-context";
+import { CapCell } from "./shape";
 import { attrs } from "./text";
 import { usePointer } from "./use-pointer";
 
@@ -54,8 +55,8 @@ export interface TabsProps {
 const TRAILING = 2;
 const OVERFLOW_WIDTH = 5;
 
-function titleText(item: TabItem, max: number, variant: "editor" | "panel"): string {
-  const title = sanitizeForDisplay(variant === "panel" ? item.title.toUpperCase() : item.title);
+function titleText(item: TabItem, max: number, _variant: "editor" | "panel"): string {
+  const title = sanitizeForDisplay(item.title);
   return truncateEnd(title, max);
 }
 
@@ -67,8 +68,10 @@ export function tabWidth(
 ): number {
   const title = displayWidth(titleText(item, maxTitle, variant));
   const description = item.description ? displayWidth(item.description) + 1 : 0;
-  if (variant === "panel") return title + paddingX * 2;
-  return paddingX + (item.iconWidth ?? 0) + title + description + TRAILING + Math.max(0, paddingX - 1);
+  // Every tab is a pill: two caps, inner padding, and one cell of space before the next tab.
+  const inner = Math.max(0, paddingX - 1);
+  if (variant === "panel") return 2 + inner * 2 + title + 1;
+  return 2 + inner + (item.iconWidth ?? 0) + title + description + TRAILING + 1;
 }
 
 /** Which tabs fit: a contiguous window that always contains the active tab. */
@@ -102,7 +105,6 @@ function Tab({
   active,
   variant,
   focused,
-  surface,
   paddingX,
   maxTitle,
   onSelect,
@@ -132,22 +134,29 @@ function Tab({
   const close = usePointer({ onClick: () => onClose?.(item.id) });
   const title = titleText(item, maxTitle, variant);
 
+  const inner = Math.max(0, paddingX - 1);
   if (variant === "panel") {
     const fg = active ? c.fg.default : pointer.hovered ? c.fg.default : c.fg.muted;
+    const fill = active ? c.bg.raised : pointer.hovered ? c.state.hover : undefined;
     return (
-      <box height={1} flexShrink={0} paddingX={paddingX} backgroundColor={surface} {...pointer.props}>
-        <text
-          fg={fg}
-          attributes={attrs({ bold: active, underline: active && theme.highContrast })}
-          selectable={false}
-        >
-          {title}
-        </text>
+      <box height={1} flexShrink={0} flexDirection="row" marginRight={1} {...pointer.props}>
+        <CapCell side="left" color={fill} />
+        <box height={1} paddingX={inner} backgroundColor={fill}>
+          <text
+            fg={fg}
+            attributes={attrs({ bold: active, underline: active && theme.highContrast })}
+            selectable={false}
+          >
+            {title}
+          </text>
+        </box>
+        <CapCell side="right" color={fill} />
       </box>
     );
   }
 
-  const bg = active ? c.bg.base : pointer.hovered ? c.state.hover : surface;
+  // The active tab is a lifted pill on the editor card; others are quiet text.
+  const bg = active ? c.bg.raised : pointer.hovered ? c.state.hover : undefined;
   const fg = active || pointer.hovered ? c.fg.default : c.fg.muted;
   // As in VS Code: a dirty tab shows its dot until hovered; the active tab offers close.
   const showClose = item.closable !== false && (pointer.hovered || (active && !item.dirty));
@@ -162,27 +171,23 @@ function Tab({
         : c.fg.muted
       : undefined;
   return (
-    <box
-      height={1}
-      flexShrink={0}
-      flexDirection="row"
-      backgroundColor={bg}
-      paddingLeft={paddingX}
-      paddingRight={Math.max(0, paddingX - 1)}
-      {...pointer.props}
-    >
-      <text
-        fg={fg}
-        selectable={false}
-        attributes={attrs({ italic: item.italic, bold: active && (focused || theme.highContrast) })}
-      >
-        {item.icon}
-        {title}
-        {item.description ? <span fg={c.fg.subtle} attributes={0}>{` ${item.description}`}</span> : null}
-      </text>
-      <box width={TRAILING} height={1} flexShrink={0} {...close.props}>
-        <text fg={trailingColor ?? fg} selectable={false}>{` ${trailing}`}</text>
+    <box height={1} flexShrink={0} flexDirection="row" marginRight={1} {...pointer.props}>
+      <CapCell side="left" color={bg} />
+      <box height={1} flexDirection="row" backgroundColor={bg} paddingLeft={inner}>
+        <text
+          fg={fg}
+          selectable={false}
+          attributes={attrs({ italic: item.italic, bold: active && (focused || theme.highContrast) })}
+        >
+          {item.icon}
+          {title}
+          {item.description ? <span fg={c.fg.subtle} attributes={0}>{` ${item.description}`}</span> : null}
+        </text>
+        <box width={TRAILING} height={1} flexShrink={0} {...close.props}>
+          <text fg={trailingColor ?? fg} selectable={false}>{` ${trailing}`}</text>
+        </box>
       </box>
+      <CapCell side="right" color={bg} />
     </box>
   );
 }

@@ -6,10 +6,12 @@
  * - Lucy's extra grammars are registered after every (re)initialization. The base client starts
  *   a fresh worker after a worker failure and would otherwise forget them.
  * - Only absolute local grammar sources are accepted (no http(s): the worker would fetch them).
- * - `highlightOnce` serves the fallback tokenizers (JSON, INI, ignore files) and applies the size
- *   guard before anything reaches the worker.
+ * - `highlightOnce` serves the fallback tokenizers (JSON, SQL, C, dotenv, logs, … see `fallback/`),
+ *   composes HTML, Vue, Svelte and PHP files from the HTML grammar plus their embedded blocks, and
+ *   applies the size guard before anything reaches the worker.
  */
 import { type FiletypeParserOptions, type SimpleHighlight, TreeSitterClient } from "@opentui/core";
+import { COMPOSITE_FILETYPES, highlightComposite } from "./embedded";
 import { fallbackTokenizerFor } from "./fallback";
 import { assertLocalParser } from "./grammars";
 
@@ -60,6 +62,15 @@ export class LucyTreeSitterClient extends TreeSitterClient {
 
   override async highlightOnce(content: string, filetype: string): Promise<HighlightOnceResult> {
     if (this.#isTooLarge(content)) return { highlights: [] };
+    if (COMPOSITE_FILETYPES.has(filetype)) {
+      const kind = filetype === "htm" || filetype === "xhtml" ? "html" : filetype;
+      return highlightComposite(
+        content,
+        kind,
+        (markup, markupFiletype) => super.highlightOnce(markup, markupFiletype),
+        (block, blockFiletype) => this.highlightOnce(block, blockFiletype),
+      );
+    }
     const fallback = fallbackTokenizerFor(filetype);
     if (fallback) {
       return {

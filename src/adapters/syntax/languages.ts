@@ -41,7 +41,41 @@ export type LanguageId =
   | "ignore"
   | "git-attributes"
   | "diff"
-  | "plaintext";
+  | "sql"
+  | "c"
+  | "cpp"
+  | "objective-c"
+  | "objective-cpp"
+  | "csharp"
+  | "java"
+  | "kotlin"
+  | "swift"
+  | "dart"
+  | "scala"
+  | "groovy"
+  | "ruby"
+  | "php"
+  | "lua"
+  | "perl"
+  | "r"
+  | "elixir"
+  | "haskell"
+  | "powershell"
+  | "graphql"
+  | "protobuf"
+  | "terraform"
+  | "hcl"
+  | "nginx"
+  | "vue"
+  | "svelte"
+  | "zig"
+  | "csv"
+  | "tsv"
+  | "log"
+  | "git-commit"
+  | "git-rebase"
+  | "plaintext"
+  | "unknown";
 
 export interface LanguageInfo {
   readonly id: LanguageId;
@@ -75,11 +109,24 @@ function define(spec: LanguageSpec): LanguageInfo {
   });
 }
 
+/**
+ * Files that are plain text by declaration (`.txt`). Not highlighted: the author said so.
+ */
 export const PLAIN_TEXT: LanguageInfo = define({
   id: "plaintext",
   displayName: "Plain Text",
   filetype: undefined,
   extensions: ["txt", "text"],
+});
+
+/**
+ * Files nobody recognizes. Shown as plain text in the status bar, but colored by the
+ * conservative fallback (URLs, quoted strings, numbers), which is designed to be safe on prose.
+ */
+export const UNKNOWN_TEXT: LanguageInfo = define({
+  id: "unknown",
+  displayName: "Plain Text",
+  filetype: "fallback-text",
 });
 
 /**
@@ -185,13 +232,13 @@ export const LANGUAGES: readonly LanguageInfo[] = Object.freeze([
   define({
     id: "go-module",
     displayName: "Go Module File",
-    filetype: undefined,
+    filetype: "gomod",
     fileNames: ["go.mod", "go.work"],
   }),
   define({
     id: "go-sum",
     displayName: "Go Checksum File",
-    filetype: undefined,
+    filetype: "fallback-text",
     fileNames: ["go.sum", "go.work.sum"],
   }),
   define({
@@ -225,11 +272,11 @@ export const LANGUAGES: readonly LanguageInfo[] = Object.freeze([
   define({
     id: "dotenv",
     displayName: "Dotenv",
-    // `.env` files are KEY=value lines in shell syntax (and are often sourced by shells).
-    filetype: "bash",
+    // A dedicated tokenizer: the Bash grammar leaves keys and unquoted values uncolored.
+    filetype: "dotenv",
     extensions: ["env"],
     fileNames: [".env"],
-    fileNamePatterns: [/^\.env\..+$/],
+    fileNamePatterns: [/^\.env[._-].+$/, /^[\w.-]+\.env\.[\w-]+$/],
   }),
   define({ id: "rust", displayName: "Rust", filetype: "rust", extensions: ["rs"] }),
   define({ id: "css", displayName: "CSS", filetype: "css", extensions: ["css", "pcss", "postcss"] }),
@@ -245,8 +292,8 @@ export const LANGUAGES: readonly LanguageInfo[] = Object.freeze([
   define({
     id: "xml",
     displayName: "XML",
-    // Best effort: tags, attributes, strings and comments come out right with the HTML grammar.
-    filetype: "html",
+    // A markup tokenizer: the HTML grammar misses declarations, CDATA and namespaced names.
+    filetype: "xml",
     extensions: [
       "xml",
       "svg",
@@ -269,7 +316,7 @@ export const LANGUAGES: readonly LanguageInfo[] = Object.freeze([
   define({
     id: "dockerfile",
     displayName: "Dockerfile",
-    filetype: undefined,
+    filetype: "dockerfile",
     extensions: ["dockerfile", "containerfile"],
     fileNames: ["Dockerfile", "dockerfile", "Containerfile", "containerfile"],
     fileNamePatterns: [/^(Dockerfile|dockerfile|Containerfile)\..+$/],
@@ -277,15 +324,28 @@ export const LANGUAGES: readonly LanguageInfo[] = Object.freeze([
   define({
     id: "makefile",
     displayName: "Makefile",
-    filetype: undefined,
+    filetype: "make",
     extensions: ["mk", "mak"],
-    fileNames: ["Makefile", "makefile", "GNUmakefile"],
+    fileNames: ["Makefile", "makefile", "GNUmakefile", "BSDmakefile", "Kbuild"],
+    interpreters: ["make"],
   }),
   define({
     id: "ini",
     displayName: "INI",
     filetype: "ini",
-    extensions: ["ini", "cfg", "conf"],
+    // Also systemd units and desktop entries, which are INI files.
+    extensions: [
+      "ini",
+      "cfg",
+      "conf",
+      "service",
+      "socket",
+      "timer",
+      "mount",
+      "automount",
+      "slice",
+      "desktop",
+    ],
     fileNames: [".npmrc", ".pypirc", ".flake8", ".pylintrc", ".coveragerc", ".yarnrc"],
   }),
   define({ id: "properties", displayName: "Properties", filetype: "ini", extensions: ["properties"] }),
@@ -323,8 +383,196 @@ export const LANGUAGES: readonly LanguageInfo[] = Object.freeze([
     filetype: "gitignore",
     fileNames: [".gitattributes"],
   }),
-  define({ id: "diff", displayName: "Diff", filetype: undefined, extensions: ["diff", "patch", "rej"] }),
+  define({ id: "diff", displayName: "Diff", filetype: "diff", extensions: ["diff", "patch", "rej"] }),
+  define({
+    id: "sql",
+    displayName: "SQL",
+    filetype: "sql",
+    extensions: ["sql", "psql", "pgsql", "mysql", "ddl", "dml", "hql", "cql"],
+  }),
+  define({ id: "c", displayName: "C", filetype: "c", extensions: ["c", "h"] }),
+  define({
+    id: "cpp",
+    displayName: "C++",
+    filetype: "cpp",
+    extensions: [
+      "cpp",
+      "cc",
+      "cxx",
+      "c++",
+      "hpp",
+      "hh",
+      "hxx",
+      "h++",
+      "ipp",
+      "tpp",
+      "inl",
+      "ino",
+      "cu",
+      "cuh",
+    ],
+  }),
+  define({ id: "objective-c", displayName: "Objective-C", filetype: "objc", extensions: ["m"] }),
+  define({ id: "objective-cpp", displayName: "Objective-C++", filetype: "objc", extensions: ["mm"] }),
+  define({ id: "csharp", displayName: "C#", filetype: "csharp", extensions: ["cs", "csx", "cake"] }),
+  define({ id: "java", displayName: "Java", filetype: "java", extensions: ["java", "jav"] }),
+  define({
+    id: "kotlin",
+    displayName: "Kotlin",
+    filetype: "kotlin",
+    extensions: ["kt", "kts", "ktm"],
+    interpreters: ["kotlin", "kotlinc"],
+  }),
+  define({
+    id: "swift",
+    displayName: "Swift",
+    filetype: "swift",
+    extensions: ["swift"],
+    interpreters: ["swift"],
+  }),
+  define({ id: "dart", displayName: "Dart", filetype: "dart", extensions: ["dart"], interpreters: ["dart"] }),
+  define({
+    id: "scala",
+    displayName: "Scala",
+    filetype: "scala",
+    extensions: ["scala", "sc", "sbt"],
+    interpreters: ["scala", "amm"],
+  }),
+  define({
+    id: "groovy",
+    displayName: "Groovy",
+    filetype: "groovy",
+    extensions: ["groovy", "gvy", "gy", "gradle"],
+    fileNames: ["Jenkinsfile"],
+    fileNamePatterns: [/^Jenkinsfile\..+$/],
+    interpreters: ["groovy"],
+  }),
+  define({
+    id: "ruby",
+    displayName: "Ruby",
+    filetype: "ruby",
+    extensions: ["rb", "rake", "gemspec", "ru", "rbw", "podspec", "thor", "jbuilder"],
+    fileNames: [
+      "Gemfile",
+      "Rakefile",
+      "Guardfile",
+      "Podfile",
+      "Vagrantfile",
+      "Brewfile",
+      "Fastfile",
+      "Appfile",
+      "Capfile",
+      "Berksfile",
+      "Thorfile",
+      "Dangerfile",
+      ".irbrc",
+      ".pryrc",
+      ".gemrc",
+    ],
+    interpreters: ["ruby", "jruby", "macruby", "rake"],
+  }),
+  define({
+    id: "php",
+    displayName: "PHP",
+    filetype: "php",
+    extensions: ["php", "phtml", "php3", "php4", "php5", "php7", "php8", "phps"],
+    interpreters: ["php"],
+  }),
+  define({
+    id: "lua",
+    displayName: "Lua",
+    filetype: "lua",
+    extensions: ["lua", "rockspec"],
+    fileNames: [".luacheckrc", ".luarc"],
+    interpreters: ["lua", "luajit"],
+  }),
+  define({
+    id: "perl",
+    displayName: "Perl",
+    filetype: "perl",
+    extensions: ["pl", "pm", "pod", "t", "psgi"],
+    interpreters: ["perl"],
+  }),
+  define({
+    id: "r",
+    displayName: "R",
+    filetype: "r",
+    extensions: ["r", "rprofile"],
+    fileNames: [".Rprofile", ".Renviron"],
+    interpreters: ["Rscript", "R"],
+  }),
+  define({
+    id: "elixir",
+    displayName: "Elixir",
+    filetype: "elixir",
+    extensions: ["ex", "exs"],
+    fileNames: ["mix.lock"],
+    interpreters: ["elixir", "iex"],
+  }),
+  define({
+    id: "haskell",
+    displayName: "Haskell",
+    filetype: "haskell",
+    extensions: ["hs", "lhs", "hs-boot"],
+    interpreters: ["runhaskell", "runghc", "stack"],
+  }),
+  define({
+    id: "powershell",
+    displayName: "PowerShell",
+    filetype: "powershell",
+    extensions: ["ps1", "psm1", "psd1", "pssc", "ps1xml"],
+    interpreters: ["pwsh", "powershell"],
+  }),
+  define({
+    id: "graphql",
+    displayName: "GraphQL",
+    filetype: "graphql",
+    extensions: ["graphql", "gql", "graphqls"],
+  }),
+  define({ id: "protobuf", displayName: "Protocol Buffers", filetype: "proto", extensions: ["proto"] }),
+  define({ id: "terraform", displayName: "Terraform", filetype: "hcl", extensions: ["tf", "tfvars"] }),
+  define({
+    id: "hcl",
+    displayName: "HCL",
+    filetype: "hcl",
+    extensions: ["hcl", "nomad", "tfbackend"],
+    fileNames: [".terraformrc", "terraform.rc"],
+  }),
+  define({
+    id: "nginx",
+    displayName: "Nginx",
+    filetype: "nginx",
+    extensions: ["nginx", "nginxconf"],
+    fileNames: ["nginx.conf", "mime.types", "fastcgi_params", "uwsgi_params", "scgi_params", "proxy_params"],
+    fileNamePatterns: [/^nginx.*\.conf$/],
+    pathPatterns: [/(^|\/)nginx\/.+\.conf$/, /(^|\/)nginx\/(sites|conf)-(available|enabled)\/[^/]+$/],
+  }),
+  define({ id: "vue", displayName: "Vue", filetype: "vue", extensions: ["vue"] }),
+  define({ id: "svelte", displayName: "Svelte", filetype: "svelte", extensions: ["svelte"] }),
+  define({ id: "zig", displayName: "Zig", filetype: "zig", extensions: ["zig", "zon"] }),
+  define({ id: "csv", displayName: "CSV", filetype: "csv", extensions: ["csv"] }),
+  define({ id: "tsv", displayName: "TSV", filetype: "tsv", extensions: ["tsv", "tab"] }),
+  define({
+    id: "log",
+    displayName: "Log",
+    filetype: "log",
+    extensions: ["log"],
+    fileNamePatterns: [/\.log\.\d+$/, /\.(?:out|err)\.log$/],
+  }),
+  define({
+    id: "git-commit",
+    displayName: "Git Commit Message",
+    filetype: "gitcommit",
+    fileNames: ["COMMIT_EDITMSG", "MERGE_MSG", "TAG_EDITMSG", "SQUASH_MSG", "EDIT_DESCRIPTION"],
+  }),
+  define({
+    id: "git-rebase",
+    displayName: "Git Rebase",
+    filetype: "gitrebase",
+    fileNames: ["git-rebase-todo"],
+  }),
   PLAIN_TEXT,
+  UNKNOWN_TEXT,
 ]);
 
 interface LanguageIndex {
@@ -398,7 +646,7 @@ function basename(path: string): string {
 /**
  * Detects the language of a file from its path and, for extension-less scripts, its first line.
  * Order: location (`.vscode/*.json`), exact file name, file name family, extension, shebang.
- * Never throws; unknown files are plain text.
+ * Never throws; unknown files get `UNKNOWN_TEXT`.
  */
 export function detectLanguage(path: string, firstLine?: string): LanguageInfo {
   const { byExtension, byFileName, byInterpreter } = getIndex();
@@ -426,5 +674,5 @@ export function detectLanguage(path: string, firstLine?: string): LanguageInfo {
     const language = interpreter === undefined ? undefined : byInterpreter.get(interpreter);
     if (language) return language;
   }
-  return PLAIN_TEXT;
+  return UNKNOWN_TEXT;
 }

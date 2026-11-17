@@ -16,7 +16,9 @@ import { type Disposable, Emitter } from "@/core/events";
 import { Store } from "@/core/store";
 import {
   type AccentSetting,
+  blend,
   type ColorMode,
+  contrastRatio,
   type IconTier,
   resolveColorMode,
   resolveIconTier,
@@ -45,6 +47,51 @@ export interface TerminalPalette {
   readonly ansi: readonly string[];
 }
 
+/**
+ * The island layout's colors. Cards must stand apart from the canvas: when a theme's chrome
+ * tokens are (almost) the canvas color, the card fill is lifted toward `bg.raised`. High
+ * Contrast outlines its cards instead, so shape never depends on color alone there.
+ */
+export interface ShellColors {
+  readonly canvas: RGBA;
+  /** Sidebar, agent panel, bottom panel. */
+  readonly panel: RGBA;
+  /** The editor area: the brightest card, where the work is. */
+  readonly editor: RGBA;
+  /** Soft drop shadow under floating overlays. */
+  readonly shadow: RGBA;
+  /** Draw cards with a thin outline instead of lips (High Contrast). */
+  readonly outline: boolean;
+}
+
+/** Minimum contrast between a card and the canvas before the card is lifted. */
+const CARD_SEPARATION = 1.06;
+
+function deriveShell(
+  hex: ThemeTokens,
+  colors: ColorTokens,
+  colorMode: ColorMode,
+  highContrast: boolean,
+): ShellColors {
+  const canvas = colors.bg.canvas;
+  const shadow = withAlpha(canvas, 0.7);
+  // Palette modes keep the terminal's own colors: no derived blends there.
+  if (colorMode !== "truecolor" || highContrast) {
+    return { canvas, panel: colors.bg.surface, editor: colors.bg.base, shadow, outline: highContrast };
+  }
+  const lift = (token: string): RGBA => {
+    if (contrastRatio(token, hex.bg.canvas) >= CARD_SEPARATION) return RGBA.fromHex(token);
+    let t = 0.25;
+    let lifted = blend(hex.bg.raised, token, t);
+    while (contrastRatio(lifted, hex.bg.canvas) < CARD_SEPARATION && t < 1) {
+      t += 0.15;
+      lifted = blend(hex.bg.raised, token, Math.min(1, t));
+    }
+    return RGBA.fromHex(lifted);
+  };
+  return { canvas, panel: lift(hex.bg.surface), editor: lift(hex.bg.base), shadow, outline: false };
+}
+
 export interface UiTheme {
   readonly id: ThemeId;
   readonly name: string;
@@ -57,6 +104,15 @@ export interface UiTheme {
   readonly colors: ColorTokens;
   readonly icons: IconTier;
   readonly density: Density;
+  /** `ui.cornerStyle`: soft corners on cards and pills, or plain blocks. */
+  readonly cornerStyle: "rounded" | "square";
+  /**
+   * Pill ends can be drawn as Nerd Font half circles (U+E0B4 / U+E0B6): only with the nerd
+   * icon tier (the font is there) and rounded corners.
+   */
+  readonly roundCaps: boolean;
+  /** Colors of the island layout, derived from the tokens (see `deriveShell`). */
+  readonly shell: ShellColors;
   readonly animations: boolean;
   /** Built from the syntax tokens; `null` when no renderer is attached (unit tests). */
   readonly syntaxStyle: SyntaxStyle | null;
@@ -136,6 +192,7 @@ const APPEARANCE_SETTINGS = [
   "ui.icons",
   "ui.density",
   "ui.animations",
+  "ui.cornerStyle",
 ];
 
 export class ThemeService implements Disposable {
@@ -202,6 +259,10 @@ export class ThemeService implements Disposable {
       colors,
       icons: resolveIconTier(config.get("ui.icons"), env),
       density: config.get("ui.density"),
+      cornerStyle: config.get("ui.cornerStyle"),
+      roundCaps:
+        config.get("ui.cornerStyle") === "rounded" && resolveIconTier(config.get("ui.icons"), env) === "nerd",
+      shell: deriveShell(hex, colors, colorMode, base.contrastLevel === "AAA"),
       animations: config.get("ui.animations"),
       syntaxStyle: owner ? buildSyntaxStyle({ hex, colors }, owner) : null,
       terminal,

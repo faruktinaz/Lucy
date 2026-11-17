@@ -14,6 +14,7 @@ export {
   STATE_LIMITS,
   WORKSPACE_STATE_VERSION,
   type WorkspaceLayoutState,
+  type WorkspaceSessionsState,
   type WorkspaceState,
   workspaceStateSchema,
 } from "./state";

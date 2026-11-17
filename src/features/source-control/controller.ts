@@ -10,22 +10,29 @@
  *   safe button focused (`DialogService` does that for `danger` dialogs).
  * - There is no force variant of anything.
  */
+import { basename, isAbsolute, join } from "node:path";
 import {
+  fromAbsolutePath,
   type GitBranch,
   type GitCommit,
+  type GitRepositoryManager,
   type GitService,
   type GitStash,
   gitFailureKind,
+  type RepositoryEntry,
+  repositoryLabelPath,
   toWorkspacePath,
 } from "@/adapters/git";
 import type { AppContext } from "@/app/app-context";
+import type { EditorTab } from "@/app/workbench/editors";
 import type { QuickPickItem } from "@/app/workbench/quick-pick";
 import { type Disposable, DisposableStore, Emitter, toDisposable } from "@/core/events";
+import { Store } from "@/core/store";
 import { plural, sanitizeForDisplay } from "@/core/text";
 import { icon } from "@/themes/icons";
 import { diffInput, isDiffTab } from "./diff-input";
 import { commitSummary, describeFailure } from "./messages";
-import { type ScmDiscardTarget, type ScmGroup, type ScmItem, ScmViewModel } from "./model";
+import { type ScmDiscardTarget, type ScmGroup, type ScmItem, type ScmState, ScmViewModel } from "./model";
 import { branchNameProblem, localNameForRemote } from "./ref-name";
 
 export type DiffAction = "nextChange" | "previousChange" | "toggleLayout" | "openFile";
@@ -61,43 +68,236 @@ function committedMessage(result: { summary: string; branch: string | null }): s
   return result.branch ? `${short} on ${result.branch}` : short;
 }
 
+/** One repository as the multi-repository panel shows it. */
+export interface RepositoryView {
+  readonly entry: RepositoryEntry;
+  readonly vm: ScmViewModel;
+  readonly state: ScmState;
+  /** Folder name of the repository. */
+  readonly name: string;
+  /** Path relative to the workspace (`""` for the workspace's own repository). */
+  readonly path: string;
+}
+
+export interface MultiRepositoryState {
+  /** Usable repositories: the workspace's own first, then the ones found below it. */
+  readonly repositories: readonly RepositoryView[];
+  readonly activeRoot: string | null;
+  readonly scanning: boolean;
+  readonly truncated: boolean;
+  readonly maxRepositories: number;
+}
+
+/** Where a diff tab's file lives: its repository and its repo-relative path. */
+export interface ResolvedDiff {
+  readonly service: GitService;
+  readonly path: string;
+  readonly staged: boolean;
+}
+
 export class ScmController implements Disposable {
-  private model: ScmViewModel | null = null;
+  private readonly vms = new Map<GitService, ScmViewModel>();
+  private activeService: GitService | null = null;
+  private draftRestored = false;
+  private lastDraft = "";
   private readonly disposables = new DisposableStore();
   private readonly diffActions = new Emitter<DiffAction>();
   private readonly commitFocus = new Emitter<void>();
+  private multiStore: Store<MultiRepositoryState> | null = null;
+  private multiSubscriptions = new DisposableStore();
 
   constructor(private readonly ctx: AppContext) {}
 
-  get git(): GitService {
-    return this.ctx.services.git;
+  /**
+   * The repository manager once domain services created it (when background services start);
+   * `undefined` before, so nothing beyond the workspace's own Git service exists before then.
+   */
+  get repositories(): GitRepositoryManager | undefined {
+    return this.ctx.services.createdServices.includes("gitRepositories")
+      ? this.ctx.services.gitRepositories
+      : undefined;
+  }
+
+  private get entries(): readonly RepositoryEntry[] {
+    return (
+      this.repositories?.entries ?? [
+        { root: this.ctx.workspace.root, service: this.ctx.services.git, primary: true },
+      ]
+    );
   }
 
   /**
-   * The view-model, created on first use. By then the workspace state is restored, so the
-   * persisted commit draft can be put back; afterwards every draft change is persisted (the
-   * user's own text, not the previous commit message that amend shows).
+   * The active repository's service: the one chosen in the panel or by the active editor;
+   * otherwise the workspace's own repository, or the first one found below the workspace.
    */
+  get git(): GitService {
+    const entries = this.entries;
+    if (this.activeService && entries.some((entry) => entry.service === this.activeService)) {
+      return this.activeService;
+    }
+    const primary = this.ctx.services.git;
+    if (primary.state.repo) return primary;
+    return entries.find((entry) => entry.service.state.repo)?.service ?? primary;
+  }
+
+  /** The active repository's view-model (the commit box and selection commands use it). */
   get vm(): ScmViewModel {
-    if (this.model) return this.model;
-    const vm = new ScmViewModel(this.git);
-    this.model = vm;
-    const saved = this.ctx.persisted.state.commitDraft;
-    if (saved) vm.restoreDraft({ message: saved, amend: false, savedMessage: null });
-    let last = saved;
+    return this.vmFor(this.git);
+  }
+
+  /**
+   * One view-model per repository, created on first use. The first one gets the persisted
+   * commit draft back; afterwards the active one's draft is persisted (the user's own text,
+   * not the previous commit message that amend shows).
+   */
+  vmFor(service: GitService): ScmViewModel {
+    const existing = this.vms.get(service);
+    if (existing) return existing;
+    const vm = new ScmViewModel(service);
+    this.vms.set(service, vm);
+    if (!this.draftRestored) {
+      this.draftRestored = true;
+      const saved = this.ctx.persisted.state.commitDraft;
+      this.lastDraft = saved;
+      if (saved) vm.restoreDraft({ message: saved, amend: false, savedMessage: null });
+    }
     this.disposables.add(
       toDisposable(
         vm.store.subscribe(() => {
+          if (this.vm !== vm) return;
           const draft = vm.getDraft();
           const own = draft.amend ? (draft.savedMessage ?? "") : draft.message;
-          if (own === last) return;
-          last = own;
+          if (own === this.lastDraft) return;
+          this.lastDraft = own;
           this.ctx.persisted.update({ commitDraft: own });
         }),
       ),
     );
     this.disposables.add(vm);
     return vm;
+  }
+
+  /**
+   * Makes `service` the active repository. The commit box keeps the text the user typed: the
+   * draft moves to the new repository (amend, which is about one repository's last commit,
+   * is turned off).
+   */
+  setActive(service: GitService): void {
+    const previous = this.git;
+    if (previous === service) {
+      this.activeService = service;
+      return;
+    }
+    const from = this.vmFor(previous);
+    const draft = from.getDraft();
+    const own = draft.amend ? (draft.savedMessage ?? "") : draft.message;
+    from.restoreDraft({ message: "", amend: false, savedMessage: null });
+    this.activeService = service;
+    this.vmFor(service).restoreDraft({ message: own, amend: false, savedMessage: null });
+    this.refreshMulti();
+  }
+
+  /** The repository a workspace-relative or absolute path belongs to. */
+  serviceForPath(path: string): GitService | undefined {
+    const absolute = isAbsolute(path) ? path : join(this.ctx.workspace.root, ...path.split("/"));
+    return this.repositories?.entryForPath(absolute)?.service ?? this.ctx.services.git;
+  }
+
+  /** Workspace-relative path of a repo-relative path, or `null` when it is outside the workspace. */
+  workspacePathOf(service: GitService, repoPath: string): string | null {
+    const repo = service.state.repo;
+    if (!repo) return null;
+    const entry = this.entries.find((candidate) => candidate.service === service);
+    const inRepo = toWorkspacePath(repo, repoPath);
+    if (inRepo === null) return null;
+    if (!entry || entry.primary) return inRepo;
+    const prefix = repositoryLabelPath(this.ctx.workspace.root, entry.root);
+    return prefix ? (inRepo ? `${prefix}/${inRepo}` : prefix) : inRepo;
+  }
+
+  /** The repository and repo-relative path of a diff tab (resources are workspace-relative). */
+  resolveDiffTab(tab: EditorTab | null | undefined): ResolvedDiff | null {
+    if (!isDiffTab(tab)) return null;
+    const staged = tab.params.staged === true;
+    const explicitRoot = typeof tab.params.root === "string" ? tab.params.root : undefined;
+    if (explicitRoot) {
+      const entry = this.entries.find((candidate) => candidate.root === explicitRoot);
+      if (entry) return { service: entry.service, path: tab.resource, staged };
+    }
+    const absolute = join(this.ctx.workspace.root, ...tab.resource.split("/"));
+    const service = this.repositories?.entryForPath(absolute)?.service ?? this.ctx.services.git;
+    const repo = service.state.repo;
+    const path = repo ? (fromAbsolutePath(repo, absolute) ?? tab.resource) : tab.resource;
+    return { service, path, staged };
+  }
+
+  /**
+   * The combined state of every repository, for the multi-repository panel. Until the
+   * repository manager exists it describes the workspace's own repository only; it attaches
+   * to the manager as soon as background services created it.
+   */
+  get multi(): Store<MultiRepositoryState> {
+    if (this.multiStore) return this.multiStore;
+    const store = new Store<MultiRepositoryState>(this.computeMulti());
+    this.multiStore = store;
+    let attached = false;
+    const attach = () => {
+      const manager = this.repositories;
+      if (attached || !manager) return;
+      attached = true;
+      this.disposables.add(toDisposable(manager.store.subscribe(() => this.resubscribe())));
+      this.resubscribe();
+    };
+    this.disposables.add(
+      toDisposable(
+        this.ctx.services.git.store.subscribe(() => {
+          attach();
+          this.refreshMulti();
+        }),
+      ),
+    );
+    attach();
+    return store;
+  }
+
+  private resubscribe(): void {
+    this.multiSubscriptions.dispose();
+    this.multiSubscriptions = new DisposableStore();
+    for (const entry of this.entries) {
+      const vm = this.vmFor(entry.service);
+      this.multiSubscriptions.add(toDisposable(vm.store.subscribe(() => this.refreshMulti())));
+    }
+    this.refreshMulti();
+  }
+
+  private refreshMulti(): void {
+    this.multiStore?.set(this.computeMulti());
+  }
+
+  private computeMulti(): MultiRepositoryState {
+    const manager = this.repositories;
+    const repositories: RepositoryView[] = [];
+    for (const entry of this.entries) {
+      const repo = entry.service.state.repo;
+      if (!repo) continue;
+      const path = repositoryLabelPath(this.ctx.workspace.root, entry.root);
+      const vm = this.vmFor(entry.service);
+      repositories.push({ entry, vm, state: vm.state, name: basename(path || repo.root) || repo.root, path });
+    }
+    const active = this.git;
+    const activeRoot = repositories.find((repo) => repo.entry.service === active)?.entry.root ?? null;
+    return {
+      repositories,
+      activeRoot,
+      scanning: manager?.state.scanning ?? false,
+      truncated: manager?.state.truncated ?? false,
+      maxRepositories: manager?.state.maxRepositories ?? 0,
+    };
+  }
+
+  /** Refreshes every repository and searches for new ones. */
+  async refreshAll(): Promise<void> {
+    await (this.repositories ? this.repositories.refreshAll() : this.ctx.services.git.refresh());
   }
 
   /** Commands that act on the diff tab in front (next change, toggle layout, ...). */
@@ -136,12 +336,16 @@ export class ScmController implements Disposable {
     const row = this.vm.selectedRow();
     if (row?.kind === "item") return { item: row.item };
     if (row?.kind === "section") return { group: row.section.group };
-    const active = this.ctx.editors.active;
-    if (isDiffTab(active)) return { path: active.resource, staged: active.params.staged === true };
+    const resolved = this.resolveDiffTab(this.ctx.editors.active);
+    if (resolved) {
+      this.setActive(resolved.service);
+      return { path: resolved.path, staged: resolved.staged };
+    }
     return null;
   }
 
-  private itemFor(path: string, staged: boolean): ScmItem | undefined {
+  /** The item of a repo-relative path in the active repository's groups. */
+  itemFor(path: string, staged: boolean): ScmItem | undefined {
     const vm = this.vm;
     if (staged) return vm.itemsOf("staged").find((item) => item.path === path);
     return (
@@ -153,15 +357,21 @@ export class ScmController implements Disposable {
 
   // ---------------------------------------------------------------- open
 
+  /** Opens an item of the active repository as a diff tab. */
   openDiff(item: ScmItem, options: { preview: boolean; focus?: boolean } = { preview: true }): void {
-    this.ctx.editors.open(diffInput(item.path, item.staged), { preview: options.preview });
+    const service = this.git;
+    const workspacePath = this.workspacePathOf(service, item.path);
+    const input = diffInput(workspacePath ?? item.path, item.staged);
+    const root = this.entries.find((entry) => entry.service === service)?.root;
+    // A file of the workspace's repository outside the workspace folder keeps its repo path.
+    const params = workspacePath === null && root ? { ...input.params, root } : input.params;
+    this.ctx.editors.open({ ...input, params }, { preview: options.preview });
     if (options.focus) this.ctx.focus.focus("editor");
   }
 
-  /** Opens the working-tree file (at `line`, 1-based) in the file viewer. */
-  openFile(repoPath: string, line?: number): void {
-    const repo = this.git.state.repo;
-    const workspacePath = repo ? toWorkspacePath(repo, repoPath) : repoPath;
+  /** Opens the working-tree file (at `line`, 1-based) of the active repository in the file viewer. */
+  openFile(repoPath: string, line?: number, service: GitService = this.git): void {
+    const workspacePath = this.workspacePathOf(service, repoPath);
     if (workspacePath === null || workspacePath === "") {
       this.ctx.notifications.info(
         "This file is outside the workspace",
@@ -169,7 +379,7 @@ export class ScmController implements Disposable {
       );
       return;
     }
-    const change = this.git.state.status?.changes.find((candidate) => candidate.path === repoPath);
+    const change = service.state.status?.changes.find((candidate) => candidate.path === repoPath);
     if (change && change.worktree === "deleted") {
       this.ctx.notifications.info(
         "The file was deleted",
@@ -425,8 +635,10 @@ export class ScmController implements Disposable {
 
   // ---------------------------------------------------------------- refresh
 
+  /** Refreshes every repository and searches for repositories that appeared or disappeared. */
   async refresh(): Promise<void> {
-    const state = await this.vm.refresh();
+    await this.refreshAll();
+    const state = this.git.state;
     if (state.error && state.repo)
       this.ctx.notifications.error("Refresh failed", describeFailure(state.error));
   }
@@ -795,6 +1007,7 @@ export class ScmController implements Disposable {
   }
 
   dispose(): void {
+    this.multiSubscriptions.dispose();
     this.disposables.dispose();
     this.diffActions.dispose();
     this.commitFocus.dispose();

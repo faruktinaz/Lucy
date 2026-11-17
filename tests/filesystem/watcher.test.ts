@@ -157,6 +157,28 @@ describe("Watcher batching and failure (injected fs.watch)", () => {
     watcher.dispose();
   });
 
+  test("metadata changes of a nested repository name that repository; its objects stay out", async () => {
+    const fake = fakeFactory();
+    const watcher = new Watcher({ root: "/tmp/lucy-not-used", watchFactory: fake.factory, debounceMs: 40 });
+    const { batches } = collect(watcher);
+    // A commit in a terminal inside `packages/app`: objects, the index lock, a ref.
+    fake.emit("packages/app/.git/objects/aa/bbcc");
+    fake.emit("packages/app/.git/index.lock");
+    fake.emit("packages/app/.git/refs/heads/main");
+    fake.emit("tools/.github/workflows/ci.yml");
+    fake.emit("vendor/lib/.git/objects/12/34");
+    await Bun.sleep(120);
+    expect(batches).toEqual([
+      {
+        paths: ["tools/.github/workflows/ci.yml"],
+        gitMetaChanged: false,
+        overflow: false,
+        nestedGitMeta: ["packages/app"],
+      },
+    ]);
+    watcher.dispose();
+  });
+
   test("a steady stream is flushed at maxWait", async () => {
     const fake = fakeFactory();
     const watcher = new Watcher({

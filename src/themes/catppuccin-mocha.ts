@@ -52,6 +52,7 @@ export const catppuccinMocha = defineTheme({
   defaultAccent: "blue",
   build: (accent) => ({
     bg: {
+      canvas: p.crust,
       base: p.base,
       surface: p.mantle,
       raised: p.surface0,

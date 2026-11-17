@@ -1,72 +1,72 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`Keyboard Shortcuts editor text snapshots at 120x35 and 90x28: keybindings-120x35 1`] = `
-" workspace-XXXXXX                      ⌕ Search files and commands           Ctrl+P                            ◧  ⬓  ◨  
-▎ ⧉  EXPLORER         +  ⌕  ⊟  ⋯    ❖ Keyboard Shortcuts ✕                                                              
-                                    Preferences ▸ Keyboard Shortcuts                                                    
-  ⌕                                                                                                                     
-     This folder is empty            ⌕ view                                                                   31 found  
-  ⑂                                                                                                                     
-     Create a file or a folder to     Command                   Shortcuts                                               
-  ✦  get started.                   EDITOR  1                                                                         ▕ 
-                                      Toggle Markdown Preview    Ctrl+K V   +                                         ▕ 
-  ⊞  New File  Ctrl+K Shift+F       VIEW  30                                                                          ▕ 
-     New Folder  Ctrl+K Shift+D       Check Integrations Again  No shortcut                                           ▕ 
-                                      Close All Editors         No shortcut                                           ▕ 
-                                      Close Editor               Ctrl+W                                               ▕ 
-                                      Decrease Current View Si…  Ctrl+K -                                             ▕ 
-                                      Focus AI Panel             Ctrl+L   Ctrl+| A !                                  ▕ 
-                                      Focus Editor              No shortcut                                           ▕ 
-                                      Focus Next Part            F6                                                   ▕ 
-                                      Focus Panel               No shortcut                                           ▕ 
-                                      Focus Part Above           Ctrl+K Up   Ctrl+| K !  Ctrl+| Up !                  ▕ 
-                                      Focus Part Below           Ctrl+K Down   Ctrl+| J !  Ctrl+| Down !              ▕ 
-                                      Focus Part Left            Ctrl+K Left   Ctrl+| H !  Ctrl+| Left !              ▕ 
-                                      Focus Part Right           Ctrl+K Right   Ctrl+| L !  Ctrl+| Right !            ▕ 
-                                      Focus Previous Part        Shift+F6                                               
-                                      Focus Sidebar             No shortcut                                             
-                                      Increase Current View Si…  Ctrl+K =                                               
-                                      Keep Editor Open          No shortcut                                             
-                                      Open Next Editor           Ctrl+PageDown                                          
-                                      Open Previous Editor       Ctrl+PageUp                                            
-                                      Reset Layout              No shortcut                                             
+"  workspace-XXXXXX                    ▐⌕ Search files and commands           Ctrl+P▌                    ◧  ⬓  ◨   ⊞  ❖  
+ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ 
+  ▐⧉ Files▌ ⌕  ⑂  ✦   +  ⌕  ⋯    ▐ ❖ Keyboard Shortcuts ✕▌                                                              
+                                  Preferences ▸ Keyboard Shortcuts                                                      
                                                                                                                         
-                                    Toggle Markdown Preview  editor.toggleMarkdownPreview                               
-                                    when editorFocus && activeEditor == 'file'                                          
-  ❖                                                                                                                     
-                                    Enter change   ←→ choose   Del remove   + add   / search                            
-                                                                                                       Catppuccin Mocha 
+   This folder is empty           ▐⌕ view                                                                 ▌  31 found   
+                                                                                                                        
+   Create a file or a folder        Command                   Shortcuts                                                 
+   to get started.                 EDITOR  1                                                                         ▕  
+                                  ▐  Toggle Markdown Preview    Ctrl+K V   +                                        ▌▕  
+   New File  ▐Ctrl+K Shift+F▌      VIEW  30                                                                          ▕  
+   New Folder  ▐Ctrl+K Shift+D▌      Check Integrations Again  No shortcut                                           ▕  
+                                     Close All Editors         No shortcut                                           ▕  
+                                     Close Editor               Ctrl+W                                               ▕  
+                                     Decrease Current View Si…  Ctrl+K -                                             ▕  
+                                     Focus AI Panel             Ctrl+L   Ctrl+| A !                                  ▕  
+                                     Focus Editor              No shortcut                                           ▕  
+                                     Focus Next Part            F6                                                   ▕  
+                                     Focus Panel               No shortcut                                           ▕  
+                                     Focus Part Above           Ctrl+K Up   Ctrl+| K !  Ctrl+| Up !                  ▕  
+                                     Focus Part Below           Ctrl+K Down   Ctrl+| J !  Ctrl+| Down !                 
+                                     Focus Part Left            Ctrl+K Left   Ctrl+| H !  Ctrl+| Left !                 
+                                     Focus Part Right           Ctrl+K Right   Ctrl+| L !  Ctrl+| Right !               
+                                     Focus Previous Part        Shift+F6                                                
+                                     Focus Sidebar             No shortcut                                              
+                                     Increase Current View Si…  Ctrl+K =                                                
+                                     Keep Editor Open          No shortcut                                              
+                                     Open Next Editor           Ctrl+PageDown                                           
+                                                                                                                        
+                                  Toggle Markdown Preview  editor.toggleMarkdownPreview                                 
+                                  when editorFocus && activeEditor == 'file'                                            
+                                                                                                                        
+                                  Enter change   ←→ choose   Del remove   + add   / search                              
+ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ 
+                                                                                                      Catppuccin Mocha  
 "
 `;
 
 exports[`Keyboard Shortcuts editor text snapshots at 120x35 and 90x28: keybindings-90x28 1`] = `
-" workspace-XXXXXX       ⌕ Search files and commands           Ctrl+P             ◧  ⬓  ◨  
-▎ ⧉  EXPLORER         +  ⌕  ⊟  ⋯    ❖ Keyboard Shortcuts ✕                                
-                                    Preferences ▸ Keyboard Shortcuts                      
-  ⌕                                                                                       
-     This folder is empty            ⌕ view                                     31 found  
-  ⑂                                                                                       
-     Create a file or a folder to     Command         Shortcuts                           
-  ✦  get started.                   EDITOR  1                                           ▕ 
-                                      Toggle Markdow…  Ctrl+K V   +                     ▕ 
-  ⊞  New File  Ctrl+K Shift+F       VIEW  30                                            ▕ 
-     New Folder  Ctrl+K Shift+D       Check Integrat… No shortcut                       ▕ 
-                                      Close All Edit… No shortcut                       ▕ 
-                                      Close Editor     Ctrl+W                           ▕ 
-                                      Decrease Curre…  Ctrl+K -                         ▕ 
-                                      Focus AI Panel   Ctrl+L   Ctrl+| A !                
-                                      Focus Editor    No shortcut                         
-                                      Focus Next Part  F6                                 
-                                      Focus Panel     No shortcut                         
-                                      Focus Part Abo…  Ctrl+K Up   Ctrl+| K !  Ctrl+|     
-                                      Focus Part Bel…  Ctrl+K Down   Ctrl+| J !  Ctrl+    
-                                      Focus Part Left  Ctrl+K Left   Ctrl+| H !  Ctrl+    
-                                      Focus Part Rig…  Ctrl+K Right   Ctrl+| L !  Ctrl    
+"  workspace-XXXXXX     ▐⌕ Search files and commands           Ctrl+P▌     ◧  ⬓  ◨   ⊞  ❖  
+ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ 
+  ▐⧉ Files▌ ⌕  ⑂  ✦   +  ⌕  ⋯    ▐ ❖ Keyboard Shortcuts ✕▌                                
+                                  Preferences ▸ Keyboard Shortcuts                        
                                                                                           
-                                    Toggle Markdown Previ…  editor.toggleMarkdownPreview  
-                                    when editorFocus && activeEditor == 'file'            
-  ❖                                                                                       
-                                    Enter change   ←→ choose   Del remove   + add   / se  
-                                                                         Catppuccin Mocha 
+   This folder is empty           ▐⌕ view                                   ▌  31 found   
+                                                                                          
+   Create a file or a folder        Command         Shortcuts                             
+   to get started.                 EDITOR  1                                           ▕  
+                                  ▐  Toggle Markdow…  Ctrl+K V   +                    ▌▕  
+   New File  ▐Ctrl+K Shift+F▌      VIEW  30                                            ▕  
+   New Folder  ▐Ctrl+K Shift+D▌      Check Integrat… No shortcut                       ▕  
+                                     Close All Edit… No shortcut                       ▕  
+                                     Close Editor     Ctrl+W                              
+                                     Decrease Curre…  Ctrl+K -                            
+                                     Focus AI Panel   Ctrl+L   Ctrl+| A !                 
+                                     Focus Editor    No shortcut                          
+                                     Focus Next Part  F6                                  
+                                     Focus Panel     No shortcut                          
+                                     Focus Part Abo…  Ctrl+K Up   Ctrl+| K !  Ctrl+| U    
+                                     Focus Part Bel…  Ctrl+K Down   Ctrl+| J !  Ctrl+|    
+                                                                                          
+                                  Toggle Markdown Preview  editor.toggleMarkdownPreview   
+                                  when editorFocus && activeEditor == 'file'              
+                                                                                          
+                                  Enter change   ←→ choose   Del remove   + add   / sea   
+ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ 
+                                                                        Catppuccin Mocha  
 "
 `;

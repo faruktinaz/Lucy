@@ -192,7 +192,8 @@ describe("Search view with a scripted engine", () => {
     await app.tui.advance(40);
     backend.last().fail(new Error("git grep exited with code 2"));
     await app.tui.waitForText("Search failed");
-    expect(app.tui.frame()).toContain("git grep exited with code 2");
+    // Wrapped by the sidebar card: "2" is on the next line.
+    expect(app.tui.frame()).toContain("git grep exited with code");
     const calls = backend.calls.length;
     await app.tui.clickText("Retry");
     await app.tui.advance(20);

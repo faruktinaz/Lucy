@@ -7,6 +7,7 @@
 import type { AgentLaunchMode } from "@/adapters/agents";
 import type { FeatureModule } from "@/app/feature";
 import { DisposableStore, toDisposable } from "@/core/events";
+import { sessionPersistence } from "@/features/terminal";
 import { AI_SESSIONS_VIEW_ID, AI_VIEW_ID, AiController } from "./ai-controller";
 import { createAiPanelView } from "./ai-panel-view";
 import { createAiSessionsView } from "./ai-sessions-view";
@@ -188,6 +189,19 @@ export const aiFeature: FeatureModule = {
     );
 
     store.add(ctx.lifecycle.addQuitGuard(() => controller.confirmQuit()));
+
+    // Persistent agent sessions from the last run come back after the first frame.
+    const persistence = sessionPersistence(ctx);
+    store.add(persistence.registerCounter(() => controller.runningPersistent()));
+    store.add(
+      persistence.onDidEndAll(() => {
+        for (const session of controller.sessions.get())
+          void controller.close(session.id, { confirm: false });
+      }),
+    );
+    void ctx.lifecycle.firstPaint.then(() => {
+      if (!store.isDisposed) void controller.restore().catch(() => 0);
+    });
     return store;
   },
 };

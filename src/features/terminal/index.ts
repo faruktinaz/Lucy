@@ -6,9 +6,11 @@
 import type { AppContext } from "@/app/app-context";
 import type { FeatureModule } from "@/app/feature";
 import { DisposableStore, toDisposable } from "@/core/events";
+import { sessionPersistence } from "./persistence";
 import { ShellTerminals } from "./shell-terminals";
 import { createTerminalView } from "./terminal-view";
 
+export { type SessionPersistence, sessionPersistence } from "./persistence";
 export { describeExit } from "./terminal-exit-bar";
 export { TerminalPane, type TerminalPaneProps } from "./terminal-pane";
 
@@ -40,11 +42,17 @@ export const terminalFeature: FeatureModule = {
       firstCreated = true;
       if (terminals.state.terminals.length === 0) terminals.create();
     };
-    void ctx.lifecycle.firstPaint.then(() => {
+    const persistence = sessionPersistence(ctx);
+    void ctx.lifecycle.firstPaint.then(async () => {
+      if (store.isDisposed) return;
+      // Persistent shells from the last run come back first (reattached or recreated).
+      if ((await terminals.restore().catch(() => 0)) > 0) firstCreated = true;
       if (store.isDisposed) return;
       ensureFirst();
       store.add(toDisposable(ctx.layout.store.subscribe(ensureFirst)));
     });
+    store.add(persistence.registerCounter(() => terminals.runningPersistent()));
+    store.add(persistence.onDidEndAll(() => terminals.forgetAll()));
 
     store.add(
       ctx.views.registerBottomTab({
@@ -123,6 +131,34 @@ export const terminalFeature: FeatureModule = {
           }
           await terminals.restart(active.id);
           show();
+        },
+      }),
+    );
+    store.add(
+      ctx.commands.register({
+        id: "terminal.endBackgroundSessions",
+        title: "End Background Sessions",
+        category: "Terminal",
+        description: "Stops this workspace's terminals and Claude Code sessions kept running by tmux",
+        run: async () => {
+          const sessions = await persistence.list();
+          if (sessions.length === 0) {
+            ctx.notifications.info(
+              "No background sessions",
+              "Nothing of this workspace runs in the background.",
+            );
+            return;
+          }
+          const confirmed = await ctx.dialogs.confirm({
+            title: `End ${sessions.length} background ${sessions.length === 1 ? "session" : "sessions"}?`,
+            message:
+              "Their programs are stopped and they do not come back on the next start. Claude Code keeps conversations in its history.",
+            confirmLabel: "End Sessions",
+            danger: true,
+          });
+          if (!confirmed) return;
+          const ended = await persistence.endAll();
+          ctx.hints.flash({ text: `Ended ${ended} background ${ended === 1 ? "session" : "sessions"}` });
         },
       }),
     );

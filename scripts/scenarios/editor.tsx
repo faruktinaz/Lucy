@@ -70,7 +70,39 @@ export async function wrappedScenario(app: MountedApp): Promise<void> {
   await waitForColors(app);
 }
 
+export async function editedScenario(app: MountedApp): Promise<void> {
+  await openFile(app, "src/server/store/task-store.ts", 18);
+  await waitForColors(app);
+  await app.tui.press("end");
+  await app.tui.press("enter");
+  await app.tui.type("// TODO: validate the cursor before slicing");
+  await app.tui.advance(400);
+}
+
+export async function conflictScenario(app: MountedApp): Promise<void> {
+  await openFile(app, "src/server/config.ts", 3);
+  await waitForColors(app);
+  await app.tui.type("// local note ");
+  // The coding agent rewrites the file while the edit is unsaved.
+  const path = `${app.root}/src/server/config.ts`;
+  await Bun.write(path, `${await Bun.file(path).text()}\nexport const AGENT_EDIT = true;\n`);
+  await app.tui.act(() => app.ctx.commands.execute("editor.reload"));
+  await app.tui.advance(200);
+}
+
 const sizes = [SIZES.wide, SIZES.medium];
+
+// Auto save is off here so the unsaved state stays on screen.
+defineScenario("editor-edited", editedScenario, {
+  description: "An edited, unsaved file: dirty tab marker and the Unsaved status",
+  sizes,
+  mount: { settings: { "editor.autosave": "off" } },
+});
+defineScenario("editor-conflict", conflictScenario, {
+  description: "The file changed on disk while the buffer had unsaved edits",
+  sizes,
+  mount: { settings: { "editor.autosave": "off" } },
+});
 
 defineScenario("editor-typescript", typescriptScenario, {
   description: "A TypeScript file with syntax colors, line numbers and the active line",

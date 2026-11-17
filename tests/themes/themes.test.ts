@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { getDescriptor } from "@/core/config/schema";
-import { contrastRatio, isHexColor } from "@/themes/color";
+import { contrastRatio, isHexColor, relativeLuminance } from "@/themes/color";
 import { ACCENT_NAMES, DEFAULT_THEME_ID, THEME_IDS } from "@/themes/ids";
 import { getTheme, listThemes, themeFromSettings } from "@/themes/registry";
 import { contrastTargets, resolveAccent, withAccent } from "@/themes/theme";
@@ -15,9 +15,9 @@ import {
 } from "@/themes/tokens";
 
 describe("token model", () => {
-  test("has 70 UI tokens plus a 20-entry terminal palette", () => {
+  test("has 71 UI tokens plus a 20-entry terminal palette", () => {
     const paths = tokenPaths();
-    expect(paths.filter((p) => !p.startsWith("terminal.")).length).toBe(70);
+    expect(paths.filter((p) => !p.startsWith("terminal.")).length).toBe(71);
     expect(paths.filter((p) => p.startsWith("terminal.")).length).toBe(20);
     expect(new Set(paths).size).toBe(paths.length);
   });
@@ -55,6 +55,16 @@ describe.each(listThemes().map((t) => [t.id, t] as const))("theme %s", (_id, the
     for (const name of ACCENT_NAMES) expect(isHexColor(theme.accents[name])).toBe(true);
   });
 
+  test("the canvas is the darkest backdrop: never lighter than base or surface", () => {
+    const { canvas, base, surface } = theme.tokens.bg;
+    expect(relativeLuminance(canvas)).toBeLessThanOrEqual(relativeLuminance(base));
+    expect(relativeLuminance(canvas)).toBeLessThanOrEqual(relativeLuminance(surface));
+  });
+
+  test("every theme has a distinct name", () => {
+    expect(listThemes().filter((t) => t.name === theme.name)).toHaveLength(1);
+  });
+
   test("tints are subtle: diff and selection backgrounds stay close to the canvas", () => {
     const base = theme.tokens.editor.bg;
     for (const bg of [theme.tokens.diff.addedLineBg, theme.tokens.diff.removedLineBg]) {
@@ -82,9 +92,56 @@ describe("Catppuccin Mocha anchors fixed by the product owner", () => {
   });
 });
 
+/**
+ * The dark themes added after the first four. Pinning base, body text and the default accent
+ * to the published palette catches accidental drift; the contrast suite covers the rest.
+ */
+describe.each([
+  ["dracula", "Dracula", "purple", "#282a36", "#f8f8f2", "#bd93f9"],
+  ["nord", "Nord", "teal", "#2e3440", "#d8dee9", "#88c0d0"],
+  ["one-dark", "One Dark", "blue", "#282c34", "#abb2bf", "#61afef"],
+  ["rose-pine", "Rosé Pine", "orange", "#191724", "#e0def4", "#ebbcba"],
+  ["kanagawa-wave", "Kanagawa Wave", "blue", "#1f1f28", "#dcd7ba", "#7e9cd8"],
+  ["everforest-dark", "Everforest Dark", "green", "#2d353b", "#d3c6aa", "#a7c080"],
+  ["github-dark", "GitHub Dark", "blue", "#0d1117", "#e6edf3", "#2f81f7"],
+  ["solarized-dark", "Solarized Dark", "yellow", "#002b36", "#93a1a1", "#b58900"],
+] as const)("dark theme %s", (id, name, defaultAccent, base, text, accent) => {
+  const theme = getTheme(id);
+
+  test("is registered under its own id with its display name", () => {
+    expect(theme.id).toBe(id);
+    expect(theme.name).toBe(name);
+    expect(getDescriptor("ui.theme").options?.find((o) => o.value === id)?.label).toBe(name);
+  });
+
+  test("is a dark AA theme built on its published palette", () => {
+    expect(theme.appearance).toBe("dark");
+    expect(theme.contrastLevel).toBe("AA");
+    expect(theme.tokens.bg.base).toBe(base);
+    expect(theme.tokens.editor.bg).toBe(base);
+    expect(theme.tokens.fg.default).toBe(text);
+  });
+
+  test("uses its own default accent unchanged", () => {
+    expect(theme.defaultAccent).toBe(defaultAccent);
+    expect(theme.accents[defaultAccent]).toBe(accent);
+    expect(theme.accent).toBe(accent);
+    expect(theme.tokens.accent.primary).toBe(accent);
+  });
+
+  test("the canvas is strictly darker than the chrome and the editor", () => {
+    const { canvas, surface } = theme.tokens.bg;
+    expect(relativeLuminance(canvas)).toBeLessThan(relativeLuminance(surface));
+    expect(relativeLuminance(canvas)).toBeLessThan(relativeLuminance(base));
+  });
+});
+
 describe("registry", () => {
-  test("lists the four themes in order and defaults to Catppuccin Mocha", () => {
+  test("lists the twelve themes in order and defaults to Catppuccin Mocha", () => {
+    expect(THEME_IDS).toHaveLength(12);
     expect(listThemes().map((t) => t.id)).toEqual([...THEME_IDS]);
+    // High Contrast stays last so the accessibility option is easy to find in the picker.
+    expect(THEME_IDS.at(-1)).toBe("high-contrast");
     expect(DEFAULT_THEME_ID).toBe("catppuccin-mocha");
     expect(getTheme("no-such-theme").id).toBe("catppuccin-mocha");
   });

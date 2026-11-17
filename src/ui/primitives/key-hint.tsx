@@ -6,6 +6,8 @@
 
 import { useKeybindingLabel } from "@/app/react";
 import { formatChord } from "@/core/keybindings";
+import { useTheme } from "../theme/theme-context";
+import { CapSpan } from "./shape";
 import { Span, type TextTone } from "./text";
 
 /** `ctrl+k e` -> `Ctrl+K E`. Invalid input is shown as is. */
@@ -32,12 +34,19 @@ export function KeyHint({
   tone?: TextTone;
   bold?: boolean;
 }) {
+  const theme = useTheme();
   const label = useKeybindingLabel(keys ? undefined : command);
   const text = keys ? formatKeys(keys) : label;
   if (!text) return null;
+  // A small keycap pill: quiet fill, the label in the hint tone.
+  const fill = theme.colors.bg.raised;
   return (
-    <Span tone={tone} bold={bold}>
-      {text}
-    </Span>
+    <>
+      <CapSpan side="left" color={fill} />
+      <Span tone={tone} bold={bold} bg={fill}>
+        {text}
+      </Span>
+      <CapSpan side="right" color={fill} />
+    </>
   );
 }

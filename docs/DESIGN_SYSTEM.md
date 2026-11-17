@@ -6,9 +6,15 @@ state with the live theme.
 
 ## 1. Principles
 
-- **Structure by color blocks, not lines.** Chrome sits on `bg.surface`, the editor canvas on
-  `bg.base`; regions are told apart by those two fills. The main layout has no border lines.
-  Borders (rounded, `border.default`) are reserved for floating overlays.
+- **Islands, not blocks.** The window background is `bg.canvas`. The sidebar, the editor
+  area, the agent panel and the bottom panel are separate filled cards floating on it, one
+  column apart, with softened corners. The bars (command bar, status bar) sit directly on the
+  canvas. No line grids: the cards are told apart by their fills (High Contrast adds a thin
+  rounded outline, so shape never depends on color).
+- **Pills instead of bars.** Highlights are shapes with rounded ends, inset from the card
+  edge: the selected row, tabs, buttons, badges, key hints, text fields, the search field.
+- **Built around the loop.** Run the agent, see what it changed, review, make small edits,
+  commit. Defaults and the Welcome view lead with that loop (section 5).
 - **Restrained color.** Text is default, muted or subtle. The accent marks focus and the
   active item; status colors mark real states. Nothing is colored for decoration.
 - **Quiet chrome.** Command bar, status bar and headers use muted text; only key facts (the
@@ -52,8 +58,8 @@ High Contrast never relies on color alone (`theme.highContrast` is true for AAA 
 | Selected list row | a `▌` marker in the first column |
 | Panel titles | always bold; the focused one is bold and accent |
 | Active editor tab / panel tab | bold / underlined |
-| Activity bar | the active icon is bold (all themes also show an edge marker) |
-| Region edges | the sidebar and auxiliary panel resize handles stay drawn as a thin `border.subtle` line |
+| View switcher | the active view's name is bold |
+| Cards | a thin rounded `border.subtle` outline (instead of half-block lips), overlays a `border.default` keyline |
 | Text fields | a `▏ ▕` keyline in the padding cells (`border.default`, `border.focus` when focused) |
 | Buttons | focus is bold and underlined in every theme |
 | Pending key sequence | the hint text is bold |
@@ -62,12 +68,17 @@ High Contrast never relies on color alone (`theme.highContrast` is true for AAA 
 
 | Region | Fill | Text |
 | --- | --- | --- |
-| Command bar, sidebar, tab strip, auxiliary panel, bottom panel, status bar | `bg.surface` | muted; key facts default |
-| Activity bar (a column of its own, apart from the sidebar) | `bg.inset` | subtle; active default |
-| Editor canvas, active tab, breadcrumb, Welcome | `bg.base` | default; breadcrumb subtle |
-| Search pill, ghost buttons, toasts | `bg.raised` | subtle / muted / default |
-| Text inputs | `bg.inset` | default, placeholder subtle |
-| Quick pick, dialogs, menus | `bg.overlay` with a rounded `border.default` keyline | default |
+| Window background, command bar, status bar, gaps between cards | `bg.canvas` (`theme.shell.canvas`) | muted; key facts default |
+| Sidebar, agent panel, bottom panel cards | `bg.surface` (`theme.shell.panel`) | muted; key facts default |
+| Editor card (tab strip, breadcrumb, editor view, Welcome) | `bg.base` (`theme.shell.editor`) | default; breadcrumb subtle |
+| Active tab, switcher pill, search pill, key hints, ghost buttons, toasts | `bg.raised` | subtle / muted / default |
+| Text fields | `bg.inset` pill | default, placeholder subtle |
+| Quick pick, dialogs, menus | `bg.overlay` card with lips and a soft shadow (`theme.shell.shadow`) | default |
+
+`theme.shell` (`ShellColors` in `src/ui/theme/ui-theme.ts`) is derived from the tokens once per
+theme change: when a theme's chrome token is almost the canvas color (contrast below 1.06),
+the card fill is lifted toward `bg.raised` so the island still reads; in 256/16-color modes
+the tokens are used as they are.
 | Modal backdrop | `bg.inset` at alpha 0.55 (truecolor only) | |
 | Hover / pressed | `state.hover` / `state.active` | default |
 | Selected row: list focused / unfocused | `state.selectedBg` / `state.selectedInactiveBg` | `state.selectedFg` / default |
@@ -96,7 +107,7 @@ attribute bits.
 `SPACE = { none: 0, xs: 1, sm: 2, md: 3, lg: 4 }`.
 
 `SIZE`: `commandBarHeight` 1, `statusBarHeight` 1, `tabStripHeight` 1, `panelHeaderHeight` 1,
-`activityBarWidth` 4, `treeIndent` 2, `toastWidth` 46, `maxToasts` 3, `dialogWidth` 58,
+`activityBarWidth` 4 (unused since the view switcher replaced the activity bar), `treeIndent` 2, `toastWidth` 46, `maxToasts` 3, `dialogWidth` 58,
 `quickPickWidth` 84, `quickPickMaxRows` 12, `menuMinWidth` 26.
 
 Density (`ui.density`, `useDensity()`) changes padding and gaps, never structure:
@@ -104,7 +115,7 @@ Density (`ui.density`, `useDensity()`) changes padding and gaps, never structure
 | `DensityMetrics` | comfortable | compact |
 | --- | --- | --- |
 | `rowPaddingX` (rows and headers in panels) | 1 | 1 |
-| `sectionGap` (blank rows between sections; activity bar badge row) | 1 | 0 |
+| `sectionGap` (blank rows between sections) | 1 | 0 |
 | `overlayPaddingX` / `overlayPaddingY` | 2 / 1 | 1 / 0 |
 | `tabPaddingX` | 2 | 1 |
 | `statusGap` | 2 | 1 |
@@ -115,6 +126,24 @@ from the panel edge); the last column of a panel is padding, which is where scro
 resize handles sit.
 
 ## 4. Components
+
+### Shapes (`src/ui/primitives/shape.tsx`)
+
+A cell is a hard rectangle; softness comes from glyphs that fill part of a cell in the
+shape's color over whatever is behind it.
+
+| Shape | rounded + nerd icons | rounded, no Nerd Font | `ui.cornerStyle = "square"` |
+| --- | --- | --- | --- |
+| Card (`Card`, `CardLip`) | half-block lips `▄`/`▀` top and bottom with quadrant corners `▗ ▖ ▝ ▘` | same (block elements need no special font) | lips without the corner notch |
+| Pill ends (`CapCell`, `CapSpan`, `Pill`) | Nerd Font half circles U+E0B6 / U+E0B4 | half blocks `▐` / `▌` (slim ends) | a plain cell of the pill color |
+
+The lips make every card start and end half a row inside its cell, so stacked cards (editor
+over bottom panel) show half a row of canvas between them, matching the one-column gap beside
+them. The thin-line alternative (a rounded `border.subtle` outline) was compared on real
+renders: it costs a column on each side and reads as the classic boxed-pane TUI, so it is
+used only for High Contrast. `theme.roundCaps` and `theme.cornerStyle` switch live with the
+`ui.cornerStyle` and `ui.icons` settings. `RowFrame` (from `list.tsx`) gives any row the list
+row's inset pill shape.
 
 All in `src/ui/primitives` unless noted. States are default / hover / focused / selected /
 selected-unfocused / pressed / disabled where they apply.
@@ -178,38 +207,46 @@ Git state).
 ### Anatomy
 
 ```
- orbit  demo            ⌕ Search files and commands     Ctrl+P             ◧ ⬓ ◨   command bar (surface)
-▎⧉  EXPLORER          │ README.md  main.ts ×                    │ CLAUDE CODE   ×    tab strip (surface), active tab (base)
-                      │ src › main.ts                           │                    breadcrumb (base)
- ⌕  rows ...          │ editor view (base)                      │ auxiliary view
- ⑂                    │                                         │
- 11                   │ TERMINAL  OUTPUT                 ⛶ ×    │                    bottom panel header (draggable)
-                      │ bottom view                             │
- ❖                    │                                         │
- ⎇ main ⇡1 ◉ 11        hint area                    TypeScript   Catppuccin Mocha     status bar (surface)
+  orbit  demo          ( ⌕ Search files and commands   Ctrl+P )          ◧ ⬓ ◨  ⊞ ⚙   command bar (canvas)
+ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖ ▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖   card lips (soft corners)
+   ⧉ ⌕ (⑂ Changes) ✦  ✓ ⋯ ( README.md ) main.ts ●       Claude Code   + ×   switcher | pill tabs | panel header
+   ▾ STAGED  4           src › main.ts
+   ( TS main.ts      M ) editor view                    agent view           selected row = inset pill
+ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘ ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘
+  ⎇ main ⇡1 ◉ 11         hint area                 TypeScript   Catppuccin Mocha    status bar (canvas)
 ```
 
-(The `│` above only marks region edges for this sketch; the real layout has no lines.)
+(`( )` marks pill ends in this sketch.)
 
-- **Command bar** (1 row): workspace name (default text; `demo` tag in demo mode), a centered
-  `bg.raised` pill that opens Quick Open and shows its keybinding, layout toggles on the right
-  (sidebar, bottom panel, AI panel; default color when on).
-- **Activity bar** (4 columns): one icon per sidebar view; the active view has an accent `▎`
-  on the outer edge and a default-colored icon, others are subtle. The bar sits on `bg.inset`,
-  so it reads as its own column. In comfortable density each item takes two rows and the
-  badge (a `badge.bg` pill) hangs under the icon, starting in the icon's column; compact puts
-  it beside the icon. A gear at the bottom opens the preferences menu.
-- **Sidebar**: `PanelHeader`, then the active view; every view stays mounted. A resize handle
-  sits on its inner edge.
-- **Editor area**: tab strip, breadcrumb (subtle path, last segment muted), then the active
-  tab's editor view; the Welcome view (`lucy`, workspace name, path, four to six actions with
-  their real keybindings) when nothing is open.
+- **Command bar** (1 row, on the canvas): workspace name (bold; `demo` tag in demo mode), a
+  centered search pill that opens Quick Open and shows its keybinding, layout toggles, then
+  Integrations and Settings (they used to live in the activity bar).
+- **View switcher** (the sidebar card's header; there is no activity bar): the active view as
+  a pill with icon and short name (Files, Search, Changes, Sessions), the others as icons with
+  their count; hover hints give the full names and keybindings. Views with `order >= 90`
+  (Integrations) are utilities, reached from the command bar and the palette. The view's
+  actions sit on the right; those that do not fit go into a `⋯` menu. `layout.showActivityBar`
+  now shows or hides the switcher.
+- **Sidebar card**: the switcher, then the active view; every view stays mounted. A resize
+  handle sits on its inner edge.
+- **Editor card**: pill tab strip, breadcrumb (subtle path, last segment muted), then the
+  active tab's editor view; the Welcome view when nothing is open: `lucy`, one line on what
+  Lucy is, the workspace, then the loop: Start Claude Code (accent), Review changes (with the
+  count from the Source Control view), Open a file, Search, All commands, each with a key pill.
 - **Auxiliary panel** (right; left when the sidebar is on the right): header with the view
   title and a close button; stays mounted while hidden.
 - **Bottom panel** (under the editor column): panel tabs, maximize/restore and close; the
   header row is the drag handle; stays mounted while hidden.
 - **Status bar**: left items, the hint area (pending key sequence, the armed leader, short
   messages, hover hints), right items.
+
+### Default layout (no saved layout)
+
+`applyReviewFirstLayout` (`src/app/workbench/layout-defaults.ts`) runs only when nothing was
+restored: the agent panel opens beside the editor when the terminal is at least 120 columns
+wide (the sidebar stays the preferred side when it narrows), and the sidebar switches to
+Changes as soon as Git reports changes (unless the user picked a view first); otherwise it
+stays on Files. A saved layout is restored exactly as before.
 
 ### Responsive rules
 
@@ -228,7 +265,29 @@ Git state).
 | Side widths | sidebar 16 to `min(80, 40 %)`, auxiliary 30 to `min(200, 40 %)`; defaults from `layout.sidebarWidth`, `layout.aiPanelWidth` |
 | Bottom height | 4 to `min(60, content height - 6)`; default `layout.bottomPanelHeight` |
 
-## 6. Icons
+## 6. Make it look its best
+
+Lucy draws with the terminal's font and cell grid; it cannot change either, and it never
+edits terminal configuration. These terminal settings make the cards and pills look softer
+and less cramped. Ghostty (`~/.config/ghostty/config`):
+
+```
+font-family = "JetBrainsMono Nerd Font"   # a Nerd Font gives round pill ends and file icons
+font-size = 14
+adjust-cell-height = 20%                  # more line height: rows breathe, half-block lips look finer
+window-padding-x = 12                     # space between the window edge and the canvas
+window-padding-y = 10
+window-padding-balance = true
+window-padding-color = extend             # padding takes the canvas color, so cards float on it
+cursor-style-blink = false
+```
+
+Then set `ui.icons = "nerd"` in Lucy's settings. Kitty: `modify_font cell_height 120%` and
+`window_padding_width 10`; WezTerm: `line_height = 1.2` and `window_padding`. Any terminal:
+pick a font with good box-drawing and block glyphs (most programming fonts), and avoid
+letter-spacing tweaks, which break the cell grid.
+
+## 7. Icons
 
 Three tiers in `src/themes/icons.ts` (`UI_ICONS`, `icon(name, tier)`, `iconForFile`):
 
@@ -248,12 +307,12 @@ one cell, not East Asian ambiguous, not emoji-capable, and the same names in eve
 Structural glyphs outside the icon set (`▎ ▕ ─ │`, box corners) are East Asian ambiguous;
 they are used only for edges and keylines.
 
-## 7. Motion
+## 8. Motion
 
 Only the spinner moves: it appears after 300 ms (so fast work never flashes) and turns static
 with `ui.animations = false`. No transitions, no blinking.
 
-## 8. Do and don't
+## 9. Do and don't
 
 | Do | Don't |
 | --- | --- |
@@ -267,7 +326,7 @@ with `ui.animations = false`. No transitions, no blinking.
 | Put row padding in the outer cells and align to the header's left edge | Start content in column 0 of a panel |
 | Use `usePointer` for clicks | Treat the `up` after a drag as a click |
 
-## 9. Screenshots
+## 10. Screenshots
 
 `bun run screenshots` renders every scenario against the demo workspace (real, isolated Git
 state) with the Nerd Font tier and writes
@@ -276,7 +335,7 @@ Mocha and High Contrast at 120x35, 90x28 and 70x24; scenarios can choose their o
 sizes. Flags: `--only a,b`, `--theme <id>`, `--no-png` (no browser needed), `--out <dir>`. PNGs
 need a Chromium-family browser (`LUCY_SCREENSHOT_BROWSER` overrides discovery).
 
-Built-in scenarios: `shell`, `shell-compact`, `shell-unicode-icons`, `workbench`,
+Built-in scenarios: `shell`, `shell-compact`, `shell-square`, `shell-unicode-icons`, `workbench`,
 `command-palette`, `quick-open`, `theme-picker`, `confirm-dialog`, `toast`, `context-menu`,
 `zen`, `narrow-drawer`, `gallery`. Add yours in
 `scripts/scenarios/` (see `docs/ARCHITECTURE.md` §3.10).

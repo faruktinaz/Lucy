@@ -136,7 +136,9 @@ describe("lucy --demo in a real PTY", () => {
 
     let childPids: number[] = [];
     try {
-      await waitFor("first paint", (s) => s.includes("EXPLORER") && s.includes("Ctrl+P"), 20_000);
+      // The sidebar's view switcher names the views (Files, Changes); the demo has changes,
+      // so the review-first layout may already show Changes.
+      await waitFor("first paint", (s) => /Files|Changes/.test(s) && s.includes("Ctrl+P"), 20_000);
 
       // Quick Open: Ctrl+P, type a file name, Enter; the file's content appears.
       send(KEY.ctrlP);
@@ -149,30 +151,31 @@ describe("lucy --demo in a real PTY", () => {
       // Source Control: Ctrl+K G focuses its list; Down selects the first group header and the
       // next Down its first file.
       send(`${KEY.ctrlK}g`);
-      await waitFor("source control", (s) => s.includes("SOURCE CONTROL") && s.includes("STAGED CHANGES"));
-      // The selected file row shows its inline actions (⇗ opens the file): that is how the test
-      // sees the selection move before it presses Enter.
+      await waitFor("source control", (s) => s.includes("Changes") && s.includes("STAGED CHANGES"));
+      // The selected row is drawn as a pill (▐ … ▌): that is how the test sees the selection
+      // move before it presses Enter.
       const sidebarRow = (screenText: string, name: string) =>
         screenText
           .split("\n")
           .find((line) => line.slice(0, 34).includes(name))
           ?.slice(0, 34) ?? "";
       send(KEY.down);
-      await waitFor("group selected", (s) => sidebarRow(s, "STAGED CHANGES").trimEnd().endsWith("-"));
+      await waitFor("group selected", (s) => sidebarRow(s, "STAGED CHANGES").includes("▌"));
       send(KEY.down);
-      await waitFor("file selected", (s) => sidebarRow(s, "getting-started").includes("⇗"));
+      await waitFor("file selected", (s) => sidebarRow(s, "getting-start").includes("▌"));
       send(KEY.enter);
       // The first staged file is a pure rename: no hunks, and the view says so.
       await waitFor("rename diff", (s) => s.includes("Renamed without content changes"));
       // Back to the list (Enter moved focus to the diff); the next file has real hunks.
       send(`${KEY.ctrlK}g`);
       send(KEY.down);
-      await waitFor("next file selected", (s) => sidebarRow(s, "package.json").includes("⇗"));
+      await waitFor("next file selected", (s) => sidebarRow(s, "package.json").includes("▌"));
       send(KEY.enter);
       await waitFor("diff", (s) => s.includes("@@") && s.includes("package.json"));
 
-      // AI panel start screen (Ctrl+K A). PATH has no `claude`, so nothing can be started.
-      send(`${KEY.ctrlK}a`);
+      // AI panel start screen. PATH has no `claude`, so nothing can be started.
+      // The agent panel is open by default at 120 columns: Ctrl+L focuses it.
+      send("\x0c");
       await waitFor("AI start screen", (s) => s.includes("Claude Code was not found"));
 
       // Terminal: Ctrl+K T opens a shell with focus; the echo output differs from the input.

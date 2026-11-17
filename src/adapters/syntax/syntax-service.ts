@@ -16,6 +16,7 @@ import type { FiletypeParserOptions, SimpleHighlight, TreeSitterClient } from "@
 import { isLucyError, LucyError } from "@/core/errors";
 import type { Disposable } from "@/core/events";
 import { log } from "@/core/log";
+import { COMPOSITE_FILETYPES } from "./embedded";
 import { fallbackTokenizerFor } from "./fallback";
 import { BUNDLED_FILETYPES, resolveGrammars } from "./grammars";
 import { detectLanguage, type LanguageInfo, languageById } from "./languages";
@@ -167,7 +168,8 @@ export class SyntaxService implements Disposable {
     const filetype = this.#filetypeForLanguage(languageId);
     if (filetype === undefined || content.length === 0 || this.exceedsSizeLimit(content)) return [];
 
-    const fallback = fallbackTokenizerFor(filetype);
+    // Composite files (HTML, Vue, Svelte, PHP) need the grammar for their markup: client path.
+    const fallback = COMPOSITE_FILETYPES.has(filetype) ? undefined : fallbackTokenizerFor(filetype);
     if (fallback) {
       const ranges = fallback.tokenize(content);
       if (signal?.aborted) throw cancelled();
@@ -229,7 +231,11 @@ export class SyntaxService implements Disposable {
       }
       this.#highlightable = names;
     }
-    return this.#highlightable.has(filetype) || fallbackTokenizerFor(filetype) !== undefined;
+    return (
+      this.#highlightable.has(filetype) ||
+      COMPOSITE_FILETYPES.has(filetype) ||
+      fallbackTokenizerFor(filetype) !== undefined
+    );
   }
 
   #resolveParsers(): readonly FiletypeParserOptions[] {

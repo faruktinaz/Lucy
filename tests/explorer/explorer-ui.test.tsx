@@ -219,15 +219,24 @@ describe("create, rename, delete, undo", () => {
 });
 
 describe("menus, filter, settings", () => {
-  test("keyboard context menu, Copy Relative Path reports honestly when OSC 52 is unavailable", async () => {
+  test("keyboard context menu, Copy Relative Path goes through the clipboard service", async () => {
     const app = await mountExplorer({ files: FILES });
     await focusExplorer(app);
     await app.tui.act(() => app.controller.model.select("README.md"));
     await app.tui.press("shift+f10");
     await app.tui.waitForText("Copy Relative Path");
     await app.tui.clickText("Copy Relative Path");
-    // The test renderer has no clipboard: the user is told, with the path to copy by hand.
-    await app.tui.waitForText("did not accept the copy");
+    await app.tui.waitForText("Copied relative path");
+    expect(app.clipboard?.copies).toEqual(["README.md"]);
+  });
+
+  test("Copy Path reports honestly when no clipboard works, with the path to copy by hand", async () => {
+    const app = await mountExplorer({ files: FILES });
+    if (app.clipboard) app.clipboard.failWith = "no clipboard tool was found";
+    await focusExplorer(app);
+    await app.tui.act(() => app.controller.model.select("README.md"));
+    await app.tui.act(() => app.ctx.commands.execute("explorer.copyRelativePath"));
+    await app.tui.waitForText("Could not copy");
   });
 
   test("the more menu toggles hidden files, persisted as a setting", async () => {
@@ -314,27 +323,20 @@ describe("integration", () => {
       },
     });
     await app.tui.act(() => app.ctx.services.git.refresh());
+    // With changes to review, the default layout switches the sidebar to Changes.
+    await app.tui.act(() => app.ctx.commands.execute("view.showExplorer"));
     await app.tui.act(() => app.controller.model.reveal("src/main.ts"));
     await app.tui.settle();
     const lines = sidebarFrame(app).split("\n");
-    expect(
+    // The selected row ends in its pill edge (▌); the letter sits just before it.
+    const ending = (name: string) =>
       lines
-        .find((line) => line.includes("main.ts"))
-        ?.trimEnd()
-        .endsWith("M"),
-    ).toBe(true);
-    expect(
-      lines
-        .find((line) => line.includes("README.md"))
-        ?.trimEnd()
-        .endsWith("?"),
-    ).toBe(true);
-    expect(
-      lines
-        .find((line) => line.includes(" src"))
-        ?.trimEnd()
-        .endsWith("◉"),
-    ).toBe(true);
+        .find((line) => line.includes(name))
+        ?.replace(/[\s▌]+$/, "")
+        .slice(-1);
+    expect(ending("main.ts")).toBe("M");
+    expect(ending("README.md")).toBe("?");
+    expect(ending(" src")).toBe("◉");
   });
 
   test("follows the active editor tab: reveals and marks the file", async () => {
@@ -383,8 +385,9 @@ describe("integration", () => {
     await mkdir(moved);
     await rm(app.root, { recursive: true });
     await app.tui.act(() => app.controller.refresh());
-    await app.tui.waitForText("Cannot read the workspace");
-    expect(sidebarFrame(app)).toContain("The folder no longer exists");
+    // The sidebar card wraps the message: match the first words of each line.
+    await app.tui.waitForText("Cannot read the");
+    expect(sidebarFrame(app)).toContain("The folder no longer");
     await mkdir(app.root);
     await writeFile(join(app.root, "back.txt"), "");
     await app.tui.clickText("Retry");

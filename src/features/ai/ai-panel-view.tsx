@@ -83,7 +83,9 @@ function SessionHeader({ session, controller }: { session: AgentSession; control
   // Re-render on the terminal's own changes too (exit code, start failure).
   useStore(session.terminal.state, (state) => state.status);
   const state = activityLabel(session);
-  const fixed = density.rowPaddingX + 2 + displayWidth(state) + 2 + 6 + 6;
+  // Runs in Lucy's background tmux server: survives quitting (say so, quietly).
+  const persistent = session.terminal.persistent ? " · persistent" : "";
+  const fixed = density.rowPaddingX + 2 + displayWidth(state) + displayWidth(persistent) + 2 + 6 + 6;
   const title = truncateEnd(sanitizeForDisplay(session.title), Math.max(4, size.width - fixed));
   const c = theme.colors;
   const openMenu = () => {
@@ -106,6 +108,7 @@ function SessionHeader({ session, controller }: { session: AgentSession; control
         <Icon name="modified" tone={ACTIVITY_TONE[session.activity]} />
         <Span bold={theme.highContrast}>{title}</Span>
         <Span tone={session.activity === "attention" ? "warning" : "subtle"}>{`  ${state}`}</Span>
+        {persistent ? <Span tone="subtle">{persistent}</Span> : null}
       </text>
       <ChangesChip />
       <IconButton
@@ -220,6 +223,7 @@ function Sessions({
             name={name}
             onRestart={() => void controller.restart(session.id)}
             onClose={() => void controller.close(session.id)}
+            restartLabel={session.mode.kind === "continue" ? "Continue session" : undefined}
           />
         ))}
       </box>

@@ -10,7 +10,11 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export function agentMount(options: Parameters<typeof fakeProvider>[0] = {}) {
   const spawn = scriptedSpawn(() => ({ start: DEMO_AGENT_TRANSCRIPT }));
-  return { ptySpawn: spawn.spawn, agentProviders: [fakeProvider(options)] };
+  return {
+    ptySpawn: spawn.spawn,
+    agentProviders: [fakeProvider(options)],
+    settings: { "terminal.persistence": "off" as const },
+  };
 }
 
 defineScenario(

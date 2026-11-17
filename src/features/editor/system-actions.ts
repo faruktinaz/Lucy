@@ -1,53 +1,31 @@
 /**
- * The two things the viewer asks of the operating system: putting text on the clipboard and
- * opening a file with its default application. Both go through argv arrays (`run`), never a
+ * What the editor asks of the operating system beyond `ctx.clipboard`: reading the clipboard
+ * for Ctrl+V and opening a file with its default application. Both go through argv arrays (`run`), never a
  * shell, and both report failure instead of pretending.
  */
 import { platform } from "node:os";
 import { errorMessage, LucyError } from "@/core/errors";
 import { run, which } from "@/core/process";
 
-/** The renderer's OSC 52 clipboard, when a view has registered it (works over SSH too). */
-export interface TerminalClipboard {
-  isOsc52Supported(): boolean;
-  copyToClipboardOSC52(text: string): boolean;
-}
-
-/** Holds the renderer's clipboard while a viewer is mounted; commands run outside React. */
-export class ClipboardBridge {
-  terminal: TerminalClipboard | null = null;
-}
-
-function clipboardCommands(env: NodeJS.ProcessEnv): string[][] {
-  if (platform() === "darwin") return [["pbcopy"]];
+function pasteCommands(env: NodeJS.ProcessEnv): string[][] {
+  if (platform() === "darwin") return [["pbpaste"]];
   const commands: string[][] = [];
-  if (env.WAYLAND_DISPLAY) commands.push(["wl-copy"]);
-  commands.push(["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"]);
+  if (env.WAYLAND_DISPLAY) commands.push(["wl-paste", "--no-newline"]);
+  commands.push(["xclip", "-selection", "clipboard", "-o"], ["xsel", "--clipboard", "--output"]);
   return commands;
 }
 
 /**
- * Copies `text`. The terminal's OSC 52 comes first because it reaches the user's own machine
- * even over SSH; the platform tool is the fallback. Throws `UNSUPPORTED` when neither works.
+ * Reads the system clipboard for Ctrl+V. Returns null when no tool is available (over SSH, a
+ * headless Linux): the terminal's own paste key still works there through bracketed paste.
  */
-export async function copyText(text: string, bridge: ClipboardBridge, env = process.env): Promise<void> {
-  const terminal = bridge.terminal;
-  if (terminal) {
-    try {
-      if (terminal.isOsc52Supported() && terminal.copyToClipboardOSC52(text)) return;
-    } catch {
-      // Some renderers throw instead of returning false (the test renderer does); try the OS.
-    }
-  }
-  for (const argv of clipboardCommands(env)) {
+export async function readClipboard(env = process.env): Promise<string | null> {
+  for (const argv of pasteCommands(env)) {
     if (!which(argv[0] as string)) continue;
-    const result = await run(argv, { stdin: text, timeoutMs: 3000 });
-    if (result.code === 0) return;
+    const result = await run(argv, { timeoutMs: 3000 });
+    if (result.code === 0) return result.stdout;
   }
-  throw new LucyError(
-    "UNSUPPORTED",
-    "No clipboard is available: the terminal does not support OSC 52 and no clipboard tool was found.",
-  );
+  return null;
 }
 
 /** Opens a file with the system's default application (`open` on macOS, `xdg-open` elsewhere). */

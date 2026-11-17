@@ -64,7 +64,7 @@ export const gruvboxDark = defineTheme({
   },
   defaultAccent: "blue",
   build: (accent) => ({
-    bg: { base: p.bg0, surface: p.bg0h, raised: p.bg1, overlay: p.bg0s, inset },
+    bg: { canvas: inset, base: p.bg0, surface: p.bg0h, raised: p.bg1, overlay: p.bg0s, inset },
     fg: {
       default: p.fg1,
       muted: p.fg3,

@@ -35,27 +35,35 @@ describe("shell structure", () => {
     const frame = tui.frame();
     expect(frame).toContain("atlas");
     expect(frame).toContain("Search files and commands");
-    expect(frame).toContain("EXPLORER");
+    // Views are switched in the sidebar card's header; a clean workspace opens on Files.
+    expect(frame).toContain("Files");
+    expect(frame).toContain("Start Claude Code");
     expect(frame).toContain("Open a file");
     expect(frame).toContain("Ctrl+P");
     expect(frame).toContain("Catppuccin Mocha");
   });
 
-  test("git status reaches the status bar and the activity badge", async () => {
+  test("git status reaches the status bar, and a workspace with changes opens on Changes", async () => {
     const { tui, ctx } = await mountApp({ workspace: { root: stableWorkspace() }, git: GIT });
     await tui.act(() => ctx.services.git.refresh());
     const frame = tui.frame();
     const status = frame.trimEnd().split("\n").at(-1) ?? "";
     expect(status).toContain("main");
     expect(status).toContain("2");
-    expect(frame).toMatch(/^\s+2\s/m);
+    expect(frame).toContain("Changes");
+    expect(frame).toContain("2 changes");
+    expect(ctx.layout.state.sidebar.view).toBe("scm");
   });
 
   test("nothing heavy starts before the first paint", async () => {
     const { ctx, app } = await mountApp({ workspace: { root: stableWorkspace() } });
-    // mountApp marks the first paint without starting background services.
-    expect(ctx.services.createdServices.filter((name) => name !== "git")).toEqual([]);
+    // mountApp marks the first paint without starting background services. Service objects
+    // may exist (the agent panel is open by default), but nothing has run: no Git status,
+    // no PTY, no watcher.
+    expect(ctx.services.createdServices).not.toContain("watcher");
+    expect(ctx.services.pty.size).toBe(0);
     expect(ctx.services.git.state.status).toBeNull();
+    expect(ctx.services.git.state.lastUpdated).toBeNull();
     app.markFirstPaint();
   });
 

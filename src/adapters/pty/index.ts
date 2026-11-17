@@ -59,3 +59,14 @@ export {
   type TerminalStreamEvent,
   TerminalStreamSniffer,
 } from "./terminal-stream-sniffer";
+export {
+  detectTmux,
+  parseTmuxVersion,
+  TMUX_MIN_VERSION,
+  type TmuxAvailability,
+  TmuxBackend,
+  type TmuxBackendOptions,
+  type TmuxSessionInfo,
+  type TmuxSessionSpec,
+  tmuxConfig,
+} from "./tmux";

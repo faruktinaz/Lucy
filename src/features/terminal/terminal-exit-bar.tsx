@@ -30,6 +30,10 @@ export function describeExit(name: string, state: TerminalSessionState): ExitSum
       detail: state.error?.message,
     };
   }
+  // Restored as ended (for example after a reboot): say why instead of a code.
+  if (state.error && state.exitCode === null && !state.signal) {
+    return { icon: "info", tone: "muted", title: `${name} ended`, detail: state.error.message };
+  }
   if (state.signal) return { icon: "info", tone: "muted", title: `${name} was stopped (${state.signal})` };
   if (state.exitCode === 0) return { icon: "check", tone: "success", title: `${name} exited` };
   return { icon: "warning", tone: "warning", title: `${name} exited with code ${state.exitCode ?? "?"}` };
@@ -61,11 +65,13 @@ export function TerminalExitBar({
   session,
   onRestart,
   onClose,
+  restartLabel = "Restart",
 }: {
   name: string;
   session: TerminalSession;
   onRestart: () => void;
   onClose: () => void;
+  restartLabel?: string;
 }) {
   const theme = useTheme();
   const state = useStore(session.state);
@@ -96,7 +102,7 @@ export function TerminalExitBar({
         </box>
       ) : null}
       <box flexDirection="row" paddingLeft={2} marginTop={1}>
-        <ExitAction label="Restart" keys="enter" onPress={onRestart} />
+        <ExitAction label={restartLabel} keys="enter" onPress={onRestart} />
         <ExitAction label="Close" keys="ctrl+w" onPress={onClose} />
       </box>
     </box>

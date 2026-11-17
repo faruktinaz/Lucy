@@ -10,6 +10,8 @@ import { Icon } from "@/ui/primitives/icon";
 import { useMeasure } from "@/ui/primitives/measure";
 import { EmptyState } from "@/ui/primitives/states";
 import { type TabItem, Tabs } from "@/ui/primitives/tabs";
+import { Label } from "@/ui/primitives/text";
+import { usePointer } from "@/ui/primitives/use-pointer";
 import { useTheme } from "@/ui/theme/theme-context";
 import { type ShellTerminal, type ShellTerminals, terminalTitle } from "./shell-terminals";
 import { TerminalPane } from "./terminal-pane";
@@ -42,12 +44,19 @@ function TerminalTabs({
       description: ended ? (status === "failed" ? "failed" : "exited") : undefined,
     };
   });
+  const persistent = terminals.some((terminal) => terminal.session.persistent);
   return (
-    <box height={1} flexShrink={0} onSizeChange={onSizeChange} backgroundColor={theme.colors.bg.surface}>
+    <box
+      height={1}
+      flexShrink={0}
+      flexDirection="row"
+      onSizeChange={onSizeChange}
+      backgroundColor={theme.colors.bg.surface}
+    >
       <Tabs
         items={items}
         activeId={activeId}
-        width={size.width}
+        width={Math.max(0, size.width - (persistent ? PERSISTENT_WIDTH : 0))}
         focused={focused}
         surface={theme.colors.bg.surface}
         onSelect={(id) => {
@@ -57,6 +66,25 @@ function TerminalTabs({
         onClose={(id) => void controller.kill(id)}
         maxTitleWidth={24}
       />
+      {persistent ? <PersistentBadge /> : null}
+    </box>
+  );
+}
+
+const PERSISTENT_WIDTH = 12;
+
+/** Says that these sessions survive quitting Lucy (they run in Lucy's private tmux server). */
+export function PersistentBadge() {
+  const app = useApp();
+  const pointer = usePointer({
+    hint: {
+      text: "Runs in Lucy's background tmux server: keeps running when Lucy quits",
+      keys: app.keybindingFor("terminal.endBackgroundSessions"),
+    },
+  });
+  return (
+    <box height={1} flexShrink={0} paddingX={1} {...pointer.props}>
+      <Label variant="hint">persistent</Label>
     </box>
   );
 }

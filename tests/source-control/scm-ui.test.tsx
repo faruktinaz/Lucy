@@ -303,7 +303,7 @@ describe("states", () => {
   test("a clean working tree shows the empty state", async () => {
     const { tui } = await mountScm({ git: gitOptions({ changes: [] }) });
     await tui.waitForText("No changes");
-    expect(tui.frame()).toContain("Your working tree is clean.");
+    expect(tui.frame()).toContain("Your working tree is");
     expect(tui.frame()).toContain("Nothing to commit");
   });
 });

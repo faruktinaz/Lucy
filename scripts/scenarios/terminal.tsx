@@ -8,7 +8,13 @@ const sizes = [SIZES.wide, SIZES.medium];
 
 function shellMount() {
   const spawn = scriptedSpawn(() => shellScript("zsh"));
-  return { spawn, mount: { ptySpawn: spawn.spawn, settings: { "terminal.shell": "/bin/zsh" } } };
+  return {
+    spawn,
+    mount: {
+      ptySpawn: spawn.spawn,
+      settings: { "terminal.shell": "/bin/zsh", "terminal.persistence": "off" as const },
+    },
+  };
 }
 
 const panel = shellMount();

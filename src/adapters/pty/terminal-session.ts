@@ -88,6 +88,13 @@ export interface TerminalSessionOptions {
   coalesce?: PtySpawnOptions["coalesce"];
   /** Clock, injectable for tests. */
   now?: () => number;
+  /** Runs in a background server and survives Lucy quitting (shown as "persistent"). */
+  persistent?: boolean;
+  /**
+   * Start as an already ended session (restored after its program exited, or after a reboot
+   * lost it): nothing is spawned until `restart()`. `reason` is shown with the exit.
+   */
+  ended?: { exit: PtyExitInfo; reason?: string };
 }
 
 export interface PasteResult {
@@ -220,7 +227,22 @@ export class TerminalSession implements Disposable {
     this.outputStamp = new ThrottledStamp(throttle, (at) => this.state.update({ lastOutputAt: at }));
     this.inputStamp = new ThrottledStamp(throttle, (at) => this.state.update({ lastInputAt: at }));
     this.sniffer = new TerminalStreamSniffer((event) => this.handleEvent(event));
+    if (options.ended) {
+      // Counts as started: a pane must not spawn it on mount; Restart starts it again.
+      this.generation = 1;
+      this.state.update({
+        status: "exited",
+        exitCode: options.ended.exit.code,
+        signal: options.ended.exit.signal,
+        error: options.ended.reason ? { code: null, message: options.ended.reason } : null,
+      });
+      return;
+    }
     if (options.autoStart ?? true) this.start();
+  }
+
+  get persistent(): boolean {
+    return this.options.persistent ?? false;
   }
 
   get argv(): readonly string[] {
@@ -403,7 +425,10 @@ export class TerminalSession implements Disposable {
     const pty = this.pty;
     this.pty = null;
     if (pty) {
+      // Explicit kill first: for a persistent session it ends the background session, while a
+      // plain dispose (or a hangup) only detaches from it.
       if (options.kill === false) pty.hangup();
+      else void pty.kill();
       pty.dispose();
     }
     this.screens.clear();

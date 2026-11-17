@@ -50,12 +50,23 @@ export interface EffectiveLayout {
   /** Below 80 columns the search pill collapses to an icon. */
   readonly compactCommandBar: boolean;
   readonly statusBar: boolean;
+  /**
+   * Kept for compatibility: there is no separate activity bar any more (views are switched
+   * in the sidebar card's header), so it is always hidden with width 0.
+   */
   readonly activityBar: { readonly visible: boolean; readonly width: number };
+  /** Columns of canvas between the window edge and the cards, and between cards. */
+  readonly gap: number;
+  /** `layout.showActivityBar`: show the view switcher in the sidebar header. */
+  readonly viewSwitcher: boolean;
   readonly sidebar: { readonly visible: boolean; readonly width: number; readonly drawer: boolean };
   readonly auxiliary: { readonly visible: boolean; readonly width: number; readonly drawer: boolean };
   readonly bottom: { readonly visible: boolean; readonly height: number; readonly maximized: boolean };
   readonly editor: { readonly visible: boolean };
 }
+
+/** Canvas columns between cards and at the window edges. */
+export const CARD_GAP = 1;
 
 export const LAYOUT_LIMITS = {
   minViewport: { width: 60, height: 16 },
@@ -112,9 +123,9 @@ export function computeEffectiveLayout(input: ComputeLayoutInput): EffectiveLayo
 
   const commandBar = defaults.showCommandBar && !zen && !short;
   const statusBar = defaults.showStatusBar && !zen;
-  const activityVisible = defaults.showActivityBar && !zen;
-  const activityWidth = activityVisible ? limits.activityBarWidth : 0;
-  const available = width - activityWidth;
+  // Island layout: cards float on the canvas with one column between them and at the edges.
+  const gap = CARD_GAP;
+  const available = width - 2 * gap;
 
   const wantsSidebar = state.sidebar.visible && !zen;
   const wantsAuxiliary = state.auxiliary.visible && input.hasAuxiliaryView && !zen;
@@ -161,7 +172,10 @@ export function computeEffectiveLayout(input: ComputeLayoutInput): EffectiveLayo
     // The editor stays the widest region on wide screens.
     const editorMin = Math.max(limits.editorMinWidth, Math.floor(width * 0.4));
     let over =
-      (showSidebar ? sidebarWidth : 0) + (showAuxiliary ? auxiliaryWidth : 0) + editorMin - available;
+      (showSidebar ? sidebarWidth + gap : 0) +
+      (showAuxiliary ? auxiliaryWidth + gap : 0) +
+      editorMin -
+      available;
     if (over > 0 && showAuxiliary) {
       const take = Math.min(over, auxiliaryWidth - auxiliaryBounds.min);
       auxiliaryWidth -= take;
@@ -196,7 +210,9 @@ export function computeEffectiveLayout(input: ComputeLayoutInput): EffectiveLayo
     commandBar,
     compactCommandBar: mode === "narrow",
     statusBar,
-    activityBar: { visible: activityVisible, width: activityWidth },
+    activityBar: { visible: false, width: 0 },
+    gap,
+    viewSwitcher: defaults.showActivityBar,
     sidebar: { visible: showSidebar, width: sidebarWidth, drawer: drawer === "sidebar" },
     auxiliary: { visible: showAuxiliary, width: auxiliaryWidth, drawer: drawer === "auxiliary" },
     bottom: { visible: wantsBottom, height: bottomHeight, maximized: bottomMaximized },

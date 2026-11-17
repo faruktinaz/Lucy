@@ -8,7 +8,7 @@
  * - Back/forward history over activations, and a per-tab view-state bag (scroll, cursor)
  *   that editor views read and write and that is persisted for file and diff tabs.
  */
-import { type Disposable, Emitter } from "@/core/events";
+import { type Disposable, Emitter, toDisposable } from "@/core/events";
 import { Store } from "@/core/store";
 import type { OpenFileState } from "@/core/workspace";
 
@@ -116,6 +116,7 @@ export class EditorService implements Disposable {
   private nextId = 1;
   private readonly reveals = new Emitter<RevealRequest>();
   private readonly closings = new Emitter<EditorTab>();
+  private closeGuard: ((tab: EditorTab) => Promise<boolean>) | null = null;
   private readonly previewEnabled: () => boolean;
   private readonly titleFor: (input: EditorInput) => string | undefined;
 
@@ -208,11 +209,30 @@ export class EditorService implements Disposable {
   }
 
   /** Closes a tab. Returns false when it does not exist. Dirty tabs are closed too: ask first. */
-  close(id: string): boolean {
+  /**
+   * Registers the check that runs before a dirty tab closes (the code editor asks "save,
+   * don't save, cancel"). While a guard is set, `close` of a dirty tab returns false and the
+   * guard decides; `{ force: true }` closes without asking.
+   */
+  setCloseGuard(guard: (tab: EditorTab) => Promise<boolean>): Disposable {
+    this.closeGuard = guard;
+    return toDisposable(() => {
+      if (this.closeGuard === guard) this.closeGuard = null;
+    });
+  }
+
+  close(id: string, options: { force?: boolean } = {}): boolean {
     const state = this.state;
     const index = state.tabs.findIndex((tab) => tab.id === id);
     if (index === -1) return false;
     const closing = state.tabs[index];
+    const guard = this.closeGuard;
+    if (closing?.dirty && guard && !options.force) {
+      void guard(closing).then((proceed) => {
+        if (proceed) this.close(id, { force: true });
+      });
+      return false;
+    }
     const tabs = state.tabs.filter((tab) => tab.id !== id);
     this.forgetHistory(id);
     let activeId = state.activeId;

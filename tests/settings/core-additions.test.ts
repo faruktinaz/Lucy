@@ -24,6 +24,7 @@ describe("setting behavior flags", () => {
       "ui.accent",
       "ui.density",
       "ui.icons",
+      "ui.cornerStyle",
     ]);
     expect(settingsSchema.filter((d) => d.requiresRestart).map((d) => d.path)).toEqual([
       "ui.colorMode",

@@ -9,7 +9,7 @@
 import type { GitState } from "@/adapters/git";
 import type { AppContext } from "@/app/app-context";
 import type { FeatureModule } from "@/app/feature";
-import { derived } from "@/app/workbench/readable";
+import type { Readable } from "@/app/workbench/readable";
 import type { ViewAction } from "@/app/workbench/views";
 import { type Disposable, DisposableStore, toDisposable } from "@/core/events";
 import { displayWidth } from "@/core/text";
@@ -27,13 +27,69 @@ function changeCount(state: GitState): number {
 }
 
 const SCM_VISIBLE = "sidebarView == 'scm'";
+
+/**
+ * The activity badge: changes across every repository. Before the repositories are scanned it
+ * is the workspace's own repository, read without creating anything.
+ */
+function totalChanges(ctx: AppContext): Readable<number | undefined> {
+  const total = (): number | undefined => {
+    if (!ctx.services.createdServices.includes("gitRepositories")) {
+      return changeCount(ctx.services.git.store.get()) || undefined;
+    }
+    let sum = 0;
+    for (const entry of ctx.services.gitRepositories.entries) sum += changeCount(entry.service.store.get());
+    return sum || undefined;
+  };
+  return {
+    get: total,
+    subscribe: (listener) => {
+      let current = new DisposableStore();
+      // Re-attached when the repository list changes, so new repositories count too.
+      const attach = () => {
+        current.dispose();
+        current = new DisposableStore();
+        if (ctx.services.createdServices.includes("gitRepositories")) {
+          const manager = ctx.services.gitRepositories;
+          current.add(
+            toDisposable(
+              manager.store.subscribe(() => {
+                attach();
+                listener();
+              }),
+            ),
+          );
+          for (const entry of manager.entries)
+            current.add(toDisposable(entry.service.store.subscribe(listener)));
+        } else {
+          current.add(
+            toDisposable(
+              ctx.services.git.store.subscribe(() => {
+                if (ctx.services.createdServices.includes("gitRepositories")) attach();
+                listener();
+              }),
+            ),
+          );
+        }
+      };
+      attach();
+      return () => current.dispose();
+    },
+  };
+}
 /** The front tab is a diff. Spelled with `activeEditor` so the conflict analysis sees it excludes file-editor bindings. */
 const DIFF_ACTIVE = `scmDiffActive && activeEditor == '${DIFF_KIND}'`;
 
 export const sourceControlFeature: FeatureModule = {
   id: "source-control",
   keybindings: [
-    { command: "git.stage", keys: ["ctrl+k s"], when: SCM_VISIBLE },
+    // Ctrl+K S saves while a file editor has focus (editor.save); staging yields only there,
+    // so it still works from the list and from a focused diff.
+    {
+      command: "git.stage",
+      keys: ["ctrl+k s"],
+      when: `${SCM_VISIBLE} && !(editorFocus && activeEditor == 'file')`,
+    },
     { command: "git.unstage", keys: ["ctrl+k u"], when: SCM_VISIBLE },
     { command: "git.discard", keys: ["ctrl+k d"], when: SCM_VISIBLE },
     // Ctrl+K R restarts the session while the AI panel has focus; refresh yields there.
@@ -49,11 +105,6 @@ export const sourceControlFeature: FeatureModule = {
   activate(ctx) {
     const store = new DisposableStore();
     const controller = store.add(new ScmController(ctx));
-    // The Git service is created lazily; reading its store starts no process.
-    const gitState = {
-      get: () => ctx.services.git.store.get(),
-      subscribe: (listener: () => void) => ctx.services.git.store.subscribe(listener),
-    };
 
     store.add(
       ctx.views.registerSidebarView({
@@ -62,7 +113,7 @@ export const sourceControlFeature: FeatureModule = {
         icon: "sourceControl",
         order: 30,
         command: "view.showSourceControl",
-        badge: derived([gitState] as const, (state) => changeCount(state) || undefined),
+        badge: totalChanges(ctx),
         actions: [
           { command: "git.commit", icon: "check", title: "Commit" },
           { command: "git.refresh", icon: "refresh", title: "Refresh" },
@@ -90,6 +141,21 @@ export const sourceControlFeature: FeatureModule = {
     const syncDiffKey = () => ctx.contextKeys.set("scmDiffActive", isDiffTab(ctx.editors.active));
     syncDiffKey();
     store.add(toDisposable(ctx.editors.store.subscribe(syncDiffKey)));
+
+    // The active repository follows the file in front, so the status bar shows its branch.
+    let lastResource: string | undefined;
+    const followEditor = () => {
+      const active = ctx.editors.active;
+      if (!active?.resource || active.resource === lastResource) return;
+      lastResource = active.resource;
+      if (!ctx.services.createdServices.includes("gitRepositories")) return;
+      const resolved =
+        active.kind === "diff"
+          ? controller.resolveDiffTab(active)?.service
+          : controller.serviceForPath(active.resource);
+      if (resolved) controller.setActive(resolved);
+    };
+    store.add(toDisposable(ctx.editors.store.subscribe(followEditor)));
     return store;
   },
 };
@@ -169,12 +235,10 @@ function registerCommands(ctx: AppContext, controller: ScmController): Disposabl
     "git.stageActiveDiff",
     "Stage File",
     async () => {
-      const tab = ctx.editors.active;
-      if (!isDiffTab(tab)) return;
-      const item =
-        controller.vm.itemsOf("changes").find((entry) => entry.path === tab.resource) ??
-        controller.vm.itemsOf("untracked").find((entry) => entry.path === tab.resource) ??
-        controller.vm.itemsOf("conflicts").find((entry) => entry.path === tab.resource);
+      const resolved = controller.resolveDiffTab(ctx.editors.active);
+      if (!resolved) return;
+      controller.setActive(resolved.service);
+      const item = controller.itemFor(resolved.path, false);
       if (item) await controller.stageItem(item);
       else ctx.hints.flash({ text: "This file has no unstaged changes" });
     },
@@ -184,9 +248,10 @@ function registerCommands(ctx: AppContext, controller: ScmController): Disposabl
     "git.unstageActiveDiff",
     "Unstage File",
     async () => {
-      const tab = ctx.editors.active;
-      if (!isDiffTab(tab)) return;
-      const item = controller.vm.itemsOf("staged").find((entry) => entry.path === tab.resource);
+      const resolved = controller.resolveDiffTab(ctx.editors.active);
+      if (!resolved) return;
+      controller.setActive(resolved.service);
+      const item = controller.itemFor(resolved.path, true);
       if (item) await controller.unstageItem(item);
       else ctx.hints.flash({ text: "This file is not staged" });
     },
@@ -280,7 +345,7 @@ function registerStatusItems(ctx: AppContext, controller: ScmController): Dispos
     }),
   );
   const update = () => {
-    const state = git().store.get();
+    const state = controller.git.store.get();
     const status = state.status;
     if (!status || !ctx.config.get("git.enabled")) {
       branch.update({ visible: false });
@@ -293,10 +358,16 @@ function registerStatusItems(ctx: AppContext, controller: ScmController): Dispos
       ? (status.branch.oid?.slice(0, 7) ?? "detached")
       : (status.branch.name ?? "");
     const operation = status.operation ? ` (${status.operation})` : "";
+    // With several repositories the item names the one it describes.
+    const multi = controller.multi.get();
+    const repoName =
+      multi.repositories.length > 1
+        ? multi.repositories.find((repo) => repo.entry.root === multi.activeRoot)?.name
+        : undefined;
     const switchKeys = ctx.keybindingLabel("git.checkout");
     branch.update({
       visible: true,
-      text: `${name}${operation}`,
+      text: `${repoName ? `${repoName}: ` : ""}${name}${operation}`,
       tooltip: `${status.branch.upstream ? `Tracking ${status.branch.upstream}` : "No upstream branch"}. Switch branch${switchKeys ? ` (${switchKeys})` : ""}`,
     });
     const ahead = status.branch.ahead ?? 0;
@@ -316,7 +387,7 @@ function registerStatusItems(ctx: AppContext, controller: ScmController): Dispos
         ? `${behind} to pull and ${ahead} to push with ${status.branch.upstream}. Fetch, pull or push`
         : "Synchronize",
     });
-    const count = changeCount(state);
+    const count = totalChanges(ctx).get() ?? 0;
     changes.update({
       visible: count > 0,
       text: `${icon("modified", tier)} ${count}`,
@@ -325,6 +396,8 @@ function registerStatusItems(ctx: AppContext, controller: ScmController): Dispos
     });
   };
   store.add(toDisposable(git().store.subscribe(update)));
+  // Nested repositories and the active one change after the scan; follow the combined state.
+  store.add(toDisposable(controller.multi.subscribe(update)));
   store.add(ctx.themes.onDidChange(update));
   update();
   void controller;

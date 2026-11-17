@@ -4,6 +4,7 @@
  * file). When no editor can run, the path is shown with a Copy Path action instead. After
  * the editor exits, a changed file is reloaded and the result reported.
  */
+
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
@@ -13,6 +14,7 @@ import {
   resolveEditor,
 } from "@/adapters/editor";
 import type { AppContext } from "@/app/app-context";
+import { copiedLabel } from "@/app/clipboard";
 import { errorMessage } from "@/core/errors";
 import { tildify } from "@/core/paths";
 import type { SettingsServices } from "./services";
@@ -25,7 +27,7 @@ export interface ConfigFilePosition {
 }
 
 /** Shows where config.toml is, with a copy action, when it cannot be opened here. */
-export function showConfigPath(ctx: AppContext, services: SettingsServices, reason: string): void {
+export function showConfigPath(ctx: AppContext, _services: SettingsServices, reason: string): void {
   const path = ctx.config.path;
   ctx.notifications.show({
     key: "settings.configPath",
@@ -35,12 +37,12 @@ export function showConfigPath(ctx: AppContext, services: SettingsServices, reas
     actions: [
       {
         label: "Copy Path",
-        run: () => {
-          const copied = services.renderer.current?.copyToClipboardOSC52(path) ?? false;
+        run: async () => {
+          const result = await ctx.clipboard.copy(path);
           ctx.hints.flash(
-            copied
-              ? { text: "Path copied", tone: "muted" }
-              : { text: "This terminal does not allow copying from Lucy", tone: "muted" },
+            result.ok
+              ? { text: copiedLabel(result, "Path copied"), tone: "muted" }
+              : { text: `Could not copy: ${result.reason}`, tone: "warning" },
           );
         },
       },

@@ -1,0 +1,173 @@
+/**
+ * GitHub Dark ("Dark Default"). Palette values from GitHub's Primer dark color scale and the
+ * GitHub VS Code theme (MIT, see README.md); the mapping to Lucy's tokens is our own.
+ *
+ * Character: the github.com code view. Near-black editor on an even darker backdrop, chrome
+ * one step lighter (as on github.com), a vivid blue accent, coral keywords, lavender
+ * functions, pale-blue strings, orange types and green tags, and GitHub's translucent green
+ * and red diff rows.
+ *
+ * Adjustments:
+ * - The Markdown heading blue (#1f6feb) is 4.1:1 on the editor, under our 4.5:1 for code,
+ *   so headings use it lightened just enough (`headingText`, #2c78ec).
+ * - White on the accent blue is 3.9:1, so text on the accent is the darkest canvas color.
+ */
+import { blend, ensureContrast } from "./color";
+import { defineTheme } from "./theme";
+
+const p = {
+  canvasInset: "#010409",
+  canvasDefault: "#0d1117",
+  canvasSubtle: "#161b22",
+  neutral: "#21262d",
+  border: "#30363d",
+  gray5: "#484f58",
+  gray4: "#6e7681",
+  gray3: "#8b949e",
+  gray1: "#b1bac4",
+  fg: "#e6edf3",
+  white: "#ffffff",
+  accent: "#2f81f7",
+  blueHeading: "#1f6feb",
+  blueDiff: "#388bfd",
+  blue: "#58a6ff",
+  blueLight: "#79c0ff",
+  bluePale: "#a5d6ff",
+  green: "#3fb950",
+  greenDiff: "#2ea043",
+  greenLight: "#56d364",
+  greenTag: "#7ee787",
+  yellow: "#d29922",
+  yellowLight: "#e3b341",
+  orange: "#db6d28",
+  orangeLight: "#ffa657",
+  red: "#f85149",
+  redLight: "#ff7b72",
+  redPale: "#ffa198",
+  purple: "#a371f7",
+  purpleLight: "#bc8cff",
+  purplePale: "#d2a8ff",
+  pink: "#db61a2",
+  cyan: "#39c5cf",
+  cyanLight: "#56d4dd",
+} as const;
+
+const headingText = ensureContrast(p.blueHeading, p.canvasDefault, 4.5);
+
+export const githubDark = defineTheme({
+  id: "github-dark",
+  name: "GitHub Dark",
+  appearance: "dark",
+  contrastLevel: "AA",
+  accents: {
+    blue: p.accent,
+    purple: p.purple,
+    green: p.green,
+    yellow: p.yellow,
+    orange: p.orange,
+    red: p.red,
+    teal: p.cyan,
+  },
+  defaultAccent: "blue",
+  build: (accent) => ({
+    bg: {
+      canvas: p.canvasInset,
+      base: p.canvasDefault,
+      surface: p.canvasSubtle,
+      raised: p.neutral,
+      overlay: blend(p.neutral, p.canvasSubtle, 0.5),
+      inset: p.canvasInset,
+    },
+    fg: {
+      default: p.fg,
+      muted: p.gray3,
+      subtle: p.gray4,
+      onAccent: p.canvasInset,
+      disabled: p.gray5,
+    },
+    border: { subtle: p.neutral, default: p.border, focus: accent },
+    accent: { primary: accent, secondary: p.purple },
+    state: {
+      hover: blend(p.gray4, p.canvasDefault, 0.1),
+      active: p.border,
+      selectedBg: blend(accent, p.canvasDefault, 0.24),
+      selectedFg: p.fg,
+      selectedInactiveBg: p.neutral,
+      focusRing: accent,
+    },
+    status: { success: p.green, warning: p.yellow, error: p.red, info: p.blue },
+    git: {
+      added: p.green,
+      modified: p.yellow,
+      deleted: p.red,
+      renamed: p.purple,
+      untracked: p.greenLight,
+      conflicted: p.orange,
+      ignored: p.gray4,
+    },
+    diff: {
+      addedLineBg: blend(p.greenDiff, p.canvasDefault, 0.15),
+      removedLineBg: blend(p.red, p.canvasDefault, 0.12),
+      addedWordBg: blend(p.greenDiff, p.canvasDefault, 0.3),
+      removedWordBg: blend(p.red, p.canvasDefault, 0.24),
+      addedFg: p.greenLight,
+      removedFg: p.redLight,
+      hunkHeaderBg: blend(p.blueDiff, p.canvasDefault, 0.1),
+      hunkHeaderFg: p.gray3,
+      contextFg: p.fg,
+    },
+    syntax: {
+      keyword: p.redLight,
+      string: p.bluePale,
+      number: p.blueLight,
+      comment: p.gray3,
+      function: p.purplePale,
+      type: p.orangeLight,
+      variable: p.fg,
+      parameter: p.fg,
+      constant: p.blueLight,
+      property: p.blueLight,
+      operator: p.redLight,
+      punctuation: p.fg,
+      tag: p.greenTag,
+      attribute: p.blueLight,
+      heading: headingText,
+      link: p.bluePale,
+      regexp: p.greenTag,
+    },
+    editor: {
+      bg: p.canvasDefault,
+      lineNumber: p.gray4,
+      lineNumberActive: p.fg,
+      activeLineBg: blend(p.gray4, p.canvasDefault, 0.1),
+      selectionBg: blend(accent, p.canvasDefault, 0.3),
+      findMatchBg: blend(p.yellowLight, p.canvasDefault, 0.18),
+      findMatchActiveBg: blend(p.orange, p.canvasDefault, 0.36),
+      indentGuide: p.neutral,
+    },
+    badge: { bg: accent, fg: p.canvasInset },
+    scrollbar: { track: blend(p.neutral, p.canvasDefault, 0.4), thumb: p.gray5 },
+    terminal: {
+      fg: p.fg,
+      bg: p.canvasDefault,
+      cursor: p.accent,
+      selectionBg: blend(p.accent, p.canvasDefault, 0.3),
+      black: p.gray5,
+      red: p.redLight,
+      green: p.green,
+      yellow: p.yellow,
+      blue: p.blue,
+      magenta: p.purpleLight,
+      cyan: p.cyan,
+      white: p.gray1,
+      brightBlack: p.gray4,
+      brightRed: p.redPale,
+      brightGreen: p.greenLight,
+      brightYellow: p.yellowLight,
+      brightBlue: p.blueLight,
+      brightMagenta: p.purplePale,
+      brightCyan: p.cyanLight,
+      brightWhite: p.white,
+    },
+  }),
+});

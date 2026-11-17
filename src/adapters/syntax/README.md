@@ -36,18 +36,53 @@ const lines = syntax.tokenizeLines(content, ranges); // per line: sorted, non-ov
 - Size guard: above 1 MiB (UTF-8) or 20,000 lines nothing is highlighted, in `highlight()` and in
   the client used by `<code>`. `exceedsSizeLimit(content)` lets the UI say why.
 - `highlight()` never throws except `LucyError("CANCELLED")` when its signal aborts. Unknown
-  languages, plain text and worker failures resolve to `[]`.
+  language ids, declared plain text (`plaintext`) and worker failures resolve to `[]`; files with an
+  unrecognized name are detected as `unknown` and get the conservative fallback.
 
 ## Where colors come from
 
-| Language                                                                                                                             | Source                                                         |
-| ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
-| TypeScript, TSX, JavaScript, JSX, Markdown                                                                                           | OpenTUI's bundled grammars and queries                         |
-| Python (and Starlark), Go, Bash/sh/zsh (and `.env`), YAML, TOML, Rust, CSS (and SCSS/Less, best effort), HTML (and XML, best effort) | npm grammar package (`.wasm`) + Lucy's own query in `queries/` |
-| JSON, JSON with Comments, JSON5                                                                                                      | `fallback/json-tokenizer.ts`                                   |
-| INI, Properties, Git Config, EditorConfig, `.npmrc`                                                                                  | `fallback/conf-tokenizer.ts`                                   |
-| `.gitignore`-style files, `.gitattributes`                                                                                           | `fallback/ignore-tokenizer.ts`                                 |
-| Dockerfile, Makefile, Diff, `go.mod`, `go.sum`, plain text                                                                           | detected (status bar name) but not colored                     |
+| Mechanism                                                         | Languages                                                                                                                                                                                                                   |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenTUI bundled grammar                                           | TypeScript, TSX, JavaScript, JSX, Markdown/MDX, Zig                                                                                                                                                                         |
+| npm grammar + own query (`queries/`)                              | Python, Starlark, Go, Bash/sh/zsh, YAML, TOML, Rust, CSS (SCSS/Less best effort)                                                                                                                                            |
+| Composite: HTML grammar + embedded blocks (`embedded.ts`)         | HTML (`<script>`, `<style>`, JSON scripts), Vue, Svelte, PHP templates                                                                                                                                                      |
+| Tokenizer spec (`fallback/spec-tokenizer.ts` + `fallback/specs/`) | SQL, C, C++, Objective-C(++), C#, Java, Kotlin, Swift, Dart, Scala, Groovy/Gradle, Ruby, PHP code, Lua, Perl, R, Elixir, Haskell, PowerShell, GraphQL, Protocol Buffers, HCL/Terraform, Nginx, Dockerfile, Makefile, go.mod |
+| Dedicated tokenizer (`fallback/`)                                 | JSON/JSONC/JSON5, `.env`, INI/Properties/Git Config/EditorConfig/systemd, ignore files and `.gitattributes`, XML/SVG/plist, CSV/TSV (one color per column), logs, diff/patch, Git commit messages and rebase lists          |
+| Conservative fallback (`fallback/text-tokenizer.ts`)              | Every unrecognized file: URLs, same-line quoted strings and standalone numbers only                                                                                                                                         |
+| None                                                              | `.txt` (declared plain text)                                                                                                                                                                                                |
+
+All of them emit the same nvim-treesitter group names and are served through `LucyTreeSitterClient`,
+so `<code>`, `<markdown>` fences and `tokenizeLines` (the diff view) color every language alike.
+`languageKeywords(id)` returns the word lists of each tokenizer spec, for completion. Languages on a
+Tree-sitter grammar keep theirs in the query and are not listed.
+
+### Why `.env` files have their own tokenizer
+
+They used to go through the Bash grammar. Its query captures a key as `variable`, which every
+bundled theme paints with the plain foreground, and leaves an unquoted value (`postgres://…`,
+`true`, `production`) as a bare word with no capture, so a typical `.env` showed only `=` and
+comments in color. `fallback/dotenv-tokenizer.ts` colors keys and `$VAR`/`${VAR}` references as
+`property`, values as strings, numbers or booleans, and follows dotenv quoting.
+
+### The tokenizer engine
+
+One left-to-right pass per file with no parse tree:
+
+- comments, nested where the language nests them;
+- strings with their escape rules (backslash, doubled quotes, PowerShell backticks, raw strings) and
+  interpolation (`${…}`, `#{…}`, Swift `\(…)`, `$name`);
+- numbers, and keyword, type, constant and builtin lists (case-insensitive for SQL, PHP and
+  PowerShell);
+- simple context: `.name` is a member, `name(` a call, the word after `class`/`def`/`FROM` a type
+  or function, and a `Capitalized` word a type where that is the convention.
+
+Per-language `extras` (sticky regexes) add preprocessor lines, annotations, sigils, symbols,
+Dockerfile instructions and Makefile targets. A 5,000-line SQL or C file tokenizes in about 5 to
+15 ms, against 60 to 75 ms for the Tree-sitter worker on similar files.
+
+The conservative fallback is guarded for prose: a single quote opens a string only when it does not
+follow a letter, so "don't" and "users' files" stay plain, and a number glued to a letter (`v2`,
+`3rd`) is not a number.
 
 ### Why our own queries
 
@@ -112,11 +147,22 @@ the optional peer `tree-sitter` is not installed.
 
 ## Known limitations
 
-- HTML: no injections, so `<script>` and `<style>` contents are not colored.
-- XML uses the HTML grammar: tags, attributes, strings and comments are right; `<?xml ?>` is not.
+- The tokenizer approach has no grammar, so it cannot see structure:
+  - Regex literals (`/…/` in Ruby, Perl and the like) and heredocs (Ruby, Perl, PHP; HCL's are
+    handled) are not recognized.
+  - In C-like languages a definition is told apart from a call only by `name(`, so both get the
+    function color. A user-defined type is colored only after `struct`/`class`, or when it is
+    `Capitalized` in languages where that is the convention.
+  - Keywords used as identifiers (an SQL column named `key`) are colored as keywords.
+  - Haskell, Perl and PHP get shallower colors than the C family: no `qw//` or `m//`, and HTML
+    inside PHP strings stays a string.
+- Vue and Svelte are best effort: template expressions (`{{ x }}`, `{x}`) are not tokenized as
+  JavaScript, and `<template lang="pug">` is not colored.
 - SCSS and Less use the CSS grammar: `$variables`, mixins and some nesting forms are not colored.
-- Fallback tokenizers serve `highlightOnce` only; a `<code streaming>` view of JSON or INI (OpenTUI's
-  `highlightAppend` path) stays uncolored.
+- Log timestamps and levels are recognized in common formats only (ISO 8601, syslog, Apache,
+  bracketed levels, `level=`). A lower-case "error" inside a message is deliberately left plain.
+- Fallback tokenizers serve `highlightOnce` only, so a `<code streaming>` view of a tokenizer
+  language (OpenTUI's `highlightAppend` path) stays uncolored.
 - `tokenizeLines` returns one group per span. OpenTUI merges attributes of nested groups (for example
   bold from `markup.strong` inside a heading); the diff view shows only the winning group.
 

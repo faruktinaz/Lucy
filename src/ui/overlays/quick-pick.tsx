@@ -99,7 +99,7 @@ export function QuickPickOverlay({
   const items = state.items;
   return (
     <box position="absolute" left={left} top={top} zIndex={60}>
-      <OverlayFrame width={width} title={title}>
+      <OverlayFrame width={width}>
         <box
           height={1}
           flexShrink={0}
@@ -126,6 +126,11 @@ export function QuickPickOverlay({
           <text flexShrink={0} selectable={false}>
             <Spinner active={state.loading} />
           </text>
+          {title ? (
+            <text flexShrink={0} fg={c.fg.subtle} selectable={false} wrapMode="none">
+              {` ${title.trim()}`}
+            </text>
+          ) : null}
         </box>
         <text height={1} fg={c.border.subtle} selectable={false} flexShrink={0}>
           {"─".repeat(Math.max(0, width - 2))}

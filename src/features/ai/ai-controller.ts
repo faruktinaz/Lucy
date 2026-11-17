@@ -12,6 +12,7 @@
  */
 import {
   type AgentDetection,
+  type AgentLaunch,
   type AgentLaunchMode,
   type AgentLaunchWarning,
   type AgentProvider,
@@ -21,10 +22,12 @@ import {
   buildPrompt,
   type PromptTemplateId,
 } from "@/adapters/agents";
+import type { PtySpawner } from "@/adapters/pty";
 import type { AppContext } from "@/app/app-context";
 import { errorMessage } from "@/core/errors";
 import { type Disposable, DisposableStore, toDisposable } from "@/core/events";
 import { Store } from "@/core/store";
+import { sessionPersistence } from "@/features/terminal";
 import { promptContextFrom, templateItems } from "./prompt-context";
 
 export const AI_VIEW_ID = "claude";
@@ -105,6 +108,7 @@ export class AiController implements Disposable {
       });
     };
     this.subscriptions.add(toDisposable(manager.state.subscribe(sync)));
+    this.subscriptions.add(toDisposable(manager.state.subscribe(() => this.saveSessions())));
     sync();
     return manager;
   }
@@ -148,10 +152,15 @@ export class AiController implements Disposable {
     return this.detecting;
   }
 
-  /** Detects once; later calls reuse the result. */
-  ensureDetection(): Promise<DetectionState> {
+  /**
+   * Detects once; later calls reuse the result. Waits for the first paint: the agent panel is
+   * open by default, and detection creates the agent services and runs `claude --version`,
+   * which must not delay or compete with the first frame.
+   */
+  async ensureDetection(): Promise<DetectionState> {
+    await this.ctx.lifecycle.firstPaint;
     const current = this.store.get().detection;
-    if (current.kind === "done" || current.kind === "no-provider") return Promise.resolve(current);
+    if (current.kind === "done" || current.kind === "no-provider") return current;
     return this.refreshDetection();
   }
 
@@ -213,17 +222,17 @@ export class AiController implements Disposable {
         return undefined;
       }
       const cwd = this.ctx.workspace.root;
-      let warnings: readonly AgentLaunchWarning[];
+      let launch: AgentLaunch;
       try {
-        warnings = provider.buildLaunch(mode, { cwd }).warnings;
+        launch = provider.buildLaunch(mode, { cwd });
       } catch (error) {
         this.ctx.notifications.error(`Could not start ${provider.displayName}`, errorMessage(error));
         return undefined;
       }
-      if (warnings.length > 0) {
+      if (launch.warnings.length > 0) {
         const confirmed = await this.ctx.dialogs.confirm({
           title: `Start ${provider.displayName} with these arguments?`,
-          message: warnings.map((warning) => warning.message).join(" "),
+          message: launch.warnings.map((warning) => warning.message).join(" "),
           confirmLabel: "Start Anyway",
           danger: true,
         });
@@ -239,6 +248,8 @@ export class AiController implements Disposable {
           rows: this.area.rows || undefined,
           // The panel's terminal starts the process once its emulator is connected.
           autoStart: false,
+          launch,
+          ...this.persistentSpawn(provider.id, launch, this.nextAgentNumber()),
         });
       } catch (error) {
         this.ctx.notifications.error(`Could not start ${provider.displayName}`, errorMessage(error));
@@ -346,11 +357,137 @@ export class AiController implements Disposable {
     });
   }
 
-  /** Quit guard: running sessions are stopped by quitting, so ask first. */
+  /**
+   * With persistence: the tmux spawner and stable id for a session (`lucy-<ws>-a<n>`).
+   * Without: nothing, and the manager's own spawner is used.
+   */
+  private persistentSpawn(
+    providerId: string,
+    launch: AgentLaunch,
+    number: number,
+  ): { id?: string; spawn?: PtySpawner; persistent?: boolean } {
+    const persistence = sessionPersistence(this.ctx);
+    const backend = persistence.backend();
+    if (!backend) return {};
+    const name = persistence.sessionName("a", number);
+    return {
+      id: name,
+      persistent: true,
+      spawn: backend.spawner({
+        name,
+        argv: launch.argv,
+        cwd: launch.cwd,
+        meta: { kind: "agent", number: String(number), provider: providerId },
+      }),
+    };
+  }
+
+  private nextAgentNumber(): number {
+    const persistence = sessionPersistence(this.ctx);
+    const used = [
+      ...this.sessions.get().map((session) => session.id),
+      ...persistence.saved().agents.map((agent) => agent.name),
+    ]
+      .map((id) => /-a(\d+)$/.exec(id)?.[1])
+      .map(Number)
+      .filter(Number.isFinite);
+    return Math.max(0, ...used) + 1;
+  }
+
+  /** Persistent sessions are saved so they come back after a restart (even a reboot). */
+  private saveSessions(): void {
+    const persistence = sessionPersistence(this.ctx);
+    const agents = this.sessions
+      .get()
+      .filter((session) => session.terminal.persistent)
+      .map((session) => ({
+        name: session.id,
+        title: session.title,
+        providerId: session.providerId,
+        createdAt: session.createdAt,
+      }));
+    if (JSON.stringify(persistence.saved().agents) !== JSON.stringify(agents)) persistence.save({ agents });
+  }
+
+  /**
+   * Brings back the agent sessions of the last run: still running ones are reattached, ended
+   * ones show how they ended, and ones lost with the tmux server (a reboot) come back as ended
+   * entries whose Restart continues the last conversation (`--continue`).
+   */
+  async restore(): Promise<number> {
+    const persistence = sessionPersistence(this.ctx);
+    const saved = persistence.saved().agents;
+    if (saved.length === 0) return 0;
+    const backend = persistence.backend();
+    if (!backend) return 0;
+    const live = (await persistence.list()).filter((session) => session.meta.kind === "agent");
+    const manager = this.sessionManager();
+    const cwd = this.ctx.workspace.root;
+    const names = [...new Set([...saved.map((entry) => entry.name), ...live.map((session) => session.name)])];
+    let restored = 0;
+    for (const name of names) {
+      if (this.get(name)) continue;
+      const entry = saved.find((candidate) => candidate.name === name);
+      const info = live.find((session) => session.name === name);
+      const provider = manager.provider(entry?.providerId ?? info?.meta.provider ?? "") ?? this.provider();
+      if (!provider) continue;
+      let launch: AgentLaunch;
+      try {
+        launch = provider.buildLaunch({ kind: "continue" }, { cwd });
+      } catch {
+        continue; // The CLI is gone; the saved entry stays until it can be restored.
+      }
+      const number = Number(/-a(\d+)$/.exec(name)?.[1] ?? Number.NaN);
+      const ended = !info
+        ? {
+            exit: { code: null, signal: null },
+            reason:
+              "It stopped while Lucy was closed, for example after a restart. Continue picks up its last conversation.",
+          }
+        : info.dead
+          ? { exit: info.exit ?? { code: null, signal: null } }
+          : undefined;
+      manager.create({
+        providerId: provider.id,
+        mode: { kind: "continue" },
+        cwd,
+        title: entry?.title,
+        createdAt: entry?.createdAt,
+        launch,
+        autoStart: false,
+        ended,
+        ...this.persistentSpawn(
+          provider.id,
+          launch,
+          Number.isFinite(number) ? number : this.nextAgentNumber(),
+        ),
+        id: name,
+      });
+      restored++;
+    }
+    const first = this.sessions.get()[0];
+    if (first) this.store.update({ activeId: first.id });
+    return restored;
+  }
+
+  /** Persistent sessions that keep running in the background when Lucy quits. */
+  runningPersistent(): number {
+    return this.runningSessions().filter((session) => session.terminal.persistent).length;
+  }
+
+  /** Quit guard: says plainly what quitting does to running sessions. */
   async confirmQuit(): Promise<boolean> {
     const running = this.runningSessions();
     if (running.length === 0) return true;
     const name = this.providerName();
+    if (running.every((session) => session.terminal.persistent)) {
+      const total = sessionPersistence(this.ctx).running();
+      return this.ctx.dialogs.confirm({
+        title: "Quit Lucy?",
+        message: `${total} ${total === 1 ? "session keeps" : "sessions keep"} running in the background; open Lucy again to continue. End them with End Background Sessions.`,
+        confirmLabel: "Quit",
+      });
+    }
     return this.ctx.dialogs.confirm({
       title:
         running.length === 1
@@ -425,6 +562,11 @@ export class AiController implements Disposable {
   }
 
   dispose(): void {
+    // Quitting detaches persistent sessions (they keep running in tmux) before the session
+    // manager, disposed later with the domain services, would end them.
+    for (const session of this.sessions.get()) {
+      if (session.terminal.persistent) session.terminal.dispose({ kill: false });
+    }
     this.subscriptions.dispose();
   }
 }

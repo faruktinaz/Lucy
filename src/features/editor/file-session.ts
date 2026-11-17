@@ -6,10 +6,12 @@
 import type { ViewerLimits } from "@/adapters/filesystem";
 import { type Disposable, DisposableStore, toDisposable } from "@/core/events";
 import { Store } from "@/core/store";
+import { EditSession, type EditSessionOptions, readOnlyReason } from "./edit-session";
 import {
   documentLines,
   FindModel,
   type SyntaxFacts,
+  type TextDocument,
   type ViewerDocument,
   type ViewerState,
   ViewerTab,
@@ -44,6 +46,8 @@ export interface FileSessionOptions {
   readonly maxFileSizeMb: number;
   readonly limits?: Partial<ViewerLimits>;
   readonly viewer: ViewerState;
+  /** Editing support; without it every file is shown read-only. */
+  readonly editing?: Omit<EditSessionOptions, "root" | "path" | "document">;
 }
 
 const EMPTY_LINES: readonly string[] = Object.freeze([""]);
@@ -74,6 +78,10 @@ export class FileSession implements Disposable {
   #loading: Promise<ViewerDocument> | null = null;
   /** The last `revealRequest` the view centered on screen. */
   centeredRequest = 0;
+  /** In-place editing, once the file loaded as an editable text document. */
+  edit: EditSession | null = null;
+  /** Lines of the edited buffer as of its last pause (find, go to line and the status bar use them). */
+  #editLines: readonly string[] | null = null;
 
   constructor(options: FileSessionOptions) {
     this.path = options.path;
@@ -91,7 +99,12 @@ export class FileSession implements Disposable {
       const document = this.tab.document;
       if (document === shown) return;
       shown = document;
-      this.find.setDocument(document?.kind === "text" ? documentLines(document) : EMPTY_LINES);
+      if (this.edit && document) this.edit.documentChanged(document);
+      else if (options.editing && document?.kind === "text" && readOnlyReason(document) === null) {
+        this.#startEditing(document, options);
+      }
+      if (!this.edit)
+        this.find.setDocument(document?.kind === "text" ? documentLines(document) : EMPTY_LINES);
       this.#applyPending();
     };
     this.#store.add(toDisposable(this.tab.state.subscribe(syncFind)));
@@ -116,8 +129,26 @@ export class FileSession implements Disposable {
     return this.tab.document;
   }
 
+  #startEditing(document: TextDocument, options: FileSessionOptions): void {
+    if (!options.editing) return;
+    const edit = new EditSession({ ...options.editing, root: options.root, path: options.path, document });
+    this.edit = edit;
+    this.#editLines = documentLines(document);
+    this.find.setDocument(this.#editLines);
+    edit.onTextSettled = (lines) => {
+      this.#editLines = lines;
+      this.find.setDocument(lines);
+    };
+    edit.onCursor = (line, column) => {
+      this.tab.viewer.set((state) => (state.activeLine === line ? state : { ...state, activeLine: line }));
+      this.ui.update({ column });
+    };
+    this.#store.add(edit);
+  }
+
   /** Viewer lines of a text document (one empty line otherwise). */
   lines(): readonly string[] {
+    if (this.edit && this.#editLines) return this.#editLines;
     const document = this.tab.document;
     return document?.kind === "text" ? documentLines(document) : EMPTY_LINES;
   }
